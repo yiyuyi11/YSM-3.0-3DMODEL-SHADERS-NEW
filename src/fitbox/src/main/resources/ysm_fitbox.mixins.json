@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.ysmfit.fitbox.mixin",
+  "plugin": "com.ysmfit.fitbox.mixin.FitMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": ["PlayerMixin", "EntityBoxMixin", "EntityEyeMixin", "ArrowOriginMixin", "ThrowableOriginMixin",
+    "ProjectileUtilMixin", "ExplosionMixin", "TaczEntityUtilMixin", "TaczBulletOriginMixin", "BfmEyeHeightMixin",
+    "BfmHeadPositionMixin", "BfmReachMixin"],
+  "client": ["CameraMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

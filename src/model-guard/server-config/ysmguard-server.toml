@@ -1,0 +1,15 @@
+#Refuse clients without ysmguard. With false such clients may join, but YSM data (models)
+#travels to them unencrypted.
+RequireClientMod = true
+#Operators (permission level >= 2, YSM's admin level) may select and assign every model.
+AdminsUseAllModels = true
+#Treat models in ysm/custom and YSM's built-in models (except the built-in 'default') like
+#ysm/auth models: only admins, the uploader or players granted with /ysm auth may use them.
+ProtectCustomAndBuiltinModels = true
+#Who may download a protected model's runtime content (mesh, textures, animations):
+#WORN = admins, the owner/granted players, and anyone while some online player is wearing the model
+#       (so everyone still sees everyone's model);
+#OPEN = YSM's own rule (any player may download any model unless YSM's RestrictedAuth is true).
+#Allowed Values: WORN, OPEN
+ContentPolicy = "WORN"
+

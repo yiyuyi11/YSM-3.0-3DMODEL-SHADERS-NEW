@@ -1,0 +1,12 @@
+diff --git a/src/mem.c b/src/mem.c
+index 54d9495..928fdae 100644
+--- a/src/mem.c
++++ b/src/mem.c
+@@ -4,6 +4,7 @@
+ #include "avif/avif.h"
+ 
+ #include <stdlib.h>
++#include <mimalloc-override.h>
+ 
+ void * avifAlloc(size_t size)
+ {

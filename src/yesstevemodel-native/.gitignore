@@ -1,0 +1,11 @@
+/cmake-build*
+/out/*
+/build/*
+/local/*
+/.*/
+/CMakeUserPresets.json
+/conan/cache
+__pycache__
+
+# ci
+!/.github/

@@ -1,0 +1,105 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 83211a2..974be80 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -230,9 +230,12 @@ endif()
+ 
+ # this creates the static library (.a)
+ add_library( ${ly_lib_static} STATIC ${ly_lib_parts})
++target_include_directories( ${ly_lib_static} INTERFACE ${ly_inc_dir})
+ 
+ # this creates the shared library (.so)
+ add_library( ${ly_lib_shared} SHARED ${ly_lib_parts})
++target_include_directories( ${ly_lib_shared} INTERFACE ${ly_inc_dir})
++target_compile_definitions( ${ly_lib_shared} INTERFACE LIBYUV_USING_SHARED_LIBRARY=1)
+ set_target_properties( ${ly_lib_shared} PROPERTIES OUTPUT_NAME "${ly_lib_name}" )
+ set_target_properties( ${ly_lib_shared} PROPERTIES PREFIX "lib" )
+ if(WIN32)
+diff --git a/include/libyuv/row.h b/include/libyuv/row.h
+index e189d9d..294c9ec 100644
+--- a/include/libyuv/row.h
++++ b/include/libyuv/row.h
+@@ -18,6 +18,8 @@
+ #include "libyuv/basic_types.h"
+ #include "libyuv/cpu_support.h"
+ 
++#include <mimalloc.h>
++
+ #ifdef __cplusplus
+ namespace libyuv {
+ extern "C" {
+@@ -1232,19 +1234,19 @@ struct ArgbConstants {
+   size_t var##_mem_size = (size); /* NOLINT */                             \
+   void* var##_mem = (var##_mem_size > SIZE_MAX - 63)                       \
+                         ? NULL                                             \
+-                        : calloc(1, var##_mem_size + 63);     /* NOLINT */ \
++                        : mi_calloc(1, var##_mem_size + 63);     /* NOLINT */ \
+   uint8_t* var = (uint8_t*)(((intptr_t)var##_mem + 63) & ~63) /* NOLINT */
+ #else
+ #define align_buffer_64(var, size)                                         \
+   size_t var##_mem_size = (size); /* NOLINT */                             \
+   void* var##_mem = (var##_mem_size > SIZE_MAX - 63)                       \
+                         ? NULL                                             \
+-                        : malloc(var##_mem_size + 63);        /* NOLINT */ \
++                        : mi_malloc(var##_mem_size + 63);        /* NOLINT */ \
+   uint8_t* var = (uint8_t*)(((intptr_t)var##_mem + 63) & ~63) /* NOLINT */
+ #endif
+ 
+ #define free_aligned_buffer_64(var) \
+-  free(var##_mem);                  \
++  mi_free(var##_mem);                  \
+   var = NULL
+ 
+ #if defined(__APPLE__) || defined(__x86_64__) || defined(__llvm__)
+diff --git a/source/convert_to_argb.cc b/source/convert_to_argb.cc
+index bc699b6..d8611dd 100644
+--- a/source/convert_to_argb.cc
++++ b/source/convert_to_argb.cc
+@@ -23,6 +23,8 @@
+ #include "libyuv/row.h"
+ #include "libyuv/video_common.h"
+ 
++#include <mimalloc-override.h>
++
+ #ifdef __cplusplus
+ namespace libyuv {
+ extern "C" {
+diff --git a/source/convert_to_i420.cc b/source/convert_to_i420.cc
+index 67f78b1..6d47b2e 100644
+--- a/source/convert_to_i420.cc
++++ b/source/convert_to_i420.cc
+@@ -21,6 +21,8 @@
+ #include "libyuv/row.h"
+ #include "libyuv/video_common.h"
+ 
++#include <mimalloc-override.h>
++
+ #ifdef __cplusplus
+ namespace libyuv {
+ extern "C" {
+diff --git a/source/scale_argb.cc b/source/scale_argb.cc
+index dd9df36..e8e4d14 100644
+--- a/source/scale_argb.cc
++++ b/source/scale_argb.cc
+@@ -22,6 +22,8 @@
+ #include "libyuv/scale_argb.h"
+ #include "libyuv/scale_row.h"
+ 
++#include <mimalloc-override.h>
++
+ #ifdef __cplusplus
+ namespace libyuv {
+ extern "C" {
+diff --git a/source/scale_rgb.cc b/source/scale_rgb.cc
+index 0a2f2f6..31aa181 100644
+--- a/source/scale_rgb.cc
++++ b/source/scale_rgb.cc
+@@ -22,6 +22,8 @@
+ #include "libyuv/scale_argb.h"
+ #include "libyuv/scale_rgb.h"
+ 
++#include <mimalloc-override.h>
++
+ #ifdef __cplusplus
+ namespace libyuv {
+ extern "C" {

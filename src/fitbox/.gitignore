@@ -1,0 +1,6 @@
+build/
+logs/
+deps
+tools/offline/build/
+tools/offline/logs/
+*.class

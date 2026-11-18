@@ -1,0 +1,21 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a1293db..2f58481 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -749,14 +749,8 @@ if(WITH_TURBOJPEG OR WITH_TOOLS OR WITH_TESTS)
+     set(SPNG_STATIC_SOURCES $<TARGET_OBJECTS:spng-static>)
+     unset(SPNG_LIBRARY)
+   endif()
+-  if(WITH_SYSTEM_ZLIB OR WITH_SYSTEM_SPNG)
+-    find_package(ZLIB REQUIRED)
+-    unset(ZLIB_STATIC_SOURCES)
+-    set(ZLIB_LIBRARY ZLIB::ZLIB)
+-  else()
+-    set(ZLIB_STATIC_SOURCES $<TARGET_OBJECTS:zlib-static>)
+-    unset(ZLIB_LIBRARY)
+-  endif()
++  unset(ZLIB_STATIC_SOURCES)
++  set(ZLIB_LIBRARY zlib-ng-static)
+ endif()
+ 
+ if(ENABLE_SHARED)

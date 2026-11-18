@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: CC0-1.0
+syntax = "proto3";
+
+package mixel.asset.model.data;
+
+// struct_pb 要求所有 repeated scalar 为 packed
+
+message CubeLegacy {
+  uint32 faceCount = 1;
+  repeated float pos = 2 [packed = true];
+  repeated uint32 pos_indices = 3 [packed = true];
+  repeated float uv = 4 [packed = true];
+  repeated uint32 uv_indices = 5 [packed = true];
+  repeated float normal = 6 [packed = true];
+}
+
+message Cubes {
+  repeated CubeLegacy cubes_legacy = 1;  // 兼容旧版模型格式
+}
+
+message Bone {
+  string name = 1;
+  optional string parent = 2;
+  repeated float pivot = 3 [packed = true];
+  repeated float rotate = 4 [packed = true];
+  optional bool debug = 5;
+  optional uint32 cubeCount = 6;
+}
+
+message GeoProperties {
+  float texture_height = 1;
+  float texture_width = 2;
+}
+
+// Rest-position offsets of a vertex subset, scaled by a weight read from a
+// driver bone's animation attributes before skinning.
+message MorphTarget {
+  uint32 bone = 1;                                // GeoModel.bones index of the driver
+  uint32 driver = 2;                              // 0: weight = X translation; 1: weight = 1 - Y scale; clamped to [0, 1]
+  repeated uint32 vertices = 3 [packed = true];   // SkinnedMesh vertex indices
+  repeated float deltas = 4 [packed = true];      // xyz per listed vertex at full weight, model units
+}
+
+// Triangle mesh skinned by linear blend skinning. A GeoModel may carry cubes,
+// a mesh, or both.
+message SkinnedMesh {
+  repeated float positions = 1 [packed = true];   // xyz per vertex, model units
+  repeated float normals = 2 [packed = true];     // xyz per vertex
+  repeated float uvs = 3 [packed = true];         // normalized uv per vertex
+  repeated uint32 joints = 4 [packed = true];     // 4 GeoModel.bones indices per vertex
+  repeated float weights = 5 [packed = true];     // 4 weights per vertex
+  repeated uint32 triangles = 6 [packed = true];  // 3 vertex indices per triangle
+  repeated MorphTarget morphs = 7;
+  repeated uint32 outline_triangles = 8 [packed = true];  // 3 vertex indices per triangle: inverted-hull outline drawn with back-face culling in its own pass
+}
+
+// Spring bone physics. Points are in the zero-rotation model space in model
+// units, like SkinnedMesh positions. Each joint rotates its bone about the
+// pivot so the bone points at a simulated tail.
+message SpringJoint {
+  uint32 bone = 1;                                 // GeoModel.bones index
+  repeated float tail = 2 [packed = true];         // rest tail point, xyz
+  float hit_radius = 3;                            // tail sphere radius, model units
+  float stiffness = 4;                             // pull toward the animated direction, per second
+  float drag = 5;                                  // velocity loss per 1/60 s, [0, 1]
+  float gravity_power = 6;                         // model units per second
+  repeated float gravity_dir = 7 [packed = true];  // xyz, world down is (0, -1, 0)
+  uint32 chain = 8;                                // SpringBones.chains index
+  // Angle limit (VRMC_springBone_limit), applied after inertia and after each
+  // collider push. The limit space turns with the bone's animated pose; its +Y
+  // is the cone / hinge axis, the hinge turns about +X, spherical pitch turns
+  // about +X and yaw toward +X.
+  uint32 limit = 9;                                     // 0 none, 1 cone, 2 hinge, 3 spherical
+  repeated float limit_rotation = 10 [packed = true];  // limit space in the zero-rotation model space, quaternion xyzw
+  float limit_angle = 11;                               // cone or hinge angle, spherical pitch; radians
+  float limit_yaw = 12;                                 // spherical yaw, radians
+}
+
+// Capsule from head to tail carried by a bone; a sphere when both coincide.
+message SpringCollider {
+  uint32 bone = 1;
+  repeated float head = 2 [packed = true];
+  repeated float tail = 3 [packed = true];
+  float radius = 4;
+  // 0: keeps tails out of the sphere / capsule; 1: keeps them inside it
+  // (VRMC_springBone_extended_collider inside); 2: plane through head with
+  // its normal toward tail, keeps tails on the normal's side (radius unused).
+  uint32 type = 5;
+}
+
+message SpringChain {
+  repeated uint32 colliders = 1 [packed = true];  // SpringBones.colliders indices
+  // GeoModel.bones index + 1 of the chain's center (VRM spring center): inertia
+  // is computed in that bone's space, so its motion does not swing the chain.
+  // 0: world space.
+  uint32 center = 2;
+}
+
+message SpringBones {
+  repeated SpringJoint joints = 1;  // at most one per bone
+  repeated SpringCollider colliders = 2;
+  repeated SpringChain chains = 3;
+}
+
+message GeoModel {
+  repeated Bone bones = 1;
+  GeoProperties properties = 2;
+  bytes cubes = 3;
+  bytes mesh = 4;     // serialized SkinnedMesh; empty when absent
+  bytes springs = 5;  // serialized SpringBones; empty when absent
+}
