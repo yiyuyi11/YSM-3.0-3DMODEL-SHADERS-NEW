@@ -20,14 +20,14 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 /**
- * Idle, walk and run retargeted from Arknights: Endfield's own motion (the "girl" body type, the sample model's) onto an imported
- * humanoid's finished skeleton, replacing the procedural {@link HumanoidMotion} idle and gaits.
+ * Idle, walk and run retargeted from the locomotion data the mod ships (built by motion/make_resource.py) onto an
+ * imported humanoid's finished skeleton, replacing the procedural {@link HumanoidMotion} idle and gaits.
  *
  * <p>
- * The game bakes its locomotion loops as mount points rather than bones: per frame the head, the chest (on the upper
- * spine), both ankles and both palms, each with a position and an orientation. {@code endfield_locomotion.json} holds
- * the jog and sprint loops already in YSM's model space, measured on the sample model's finished skeleton (hips at 20 pixels,
- * facing -Z, left at -X), whose proportions are the source body's. For every frame the chest's turn drives UpBody and
+ * The data is mount points rather than bones: per frame the head, the chest (on the upper spine), both ankles and both
+ * palms, each with a position and an orientation. {@code endfield_locomotion.json} holds the jog and sprint loops and
+ * the idle stance in YSM's model space (pixels, facing -Z, left at -X), measured on the source skeleton it records
+ * ("source"). For every frame the chest's turn drives UpBody and
  * Root shifts the body as the source pelvis moved; the legs reach the ankle mounts and the arms the palm mounts with
  * two-bone IK whose middle joint bends away from the swing; feet, hands and head keep their mounts' orientations.
  * Displacements scale with the target's leg and arm lengths, so any imported figure moves the same way.
@@ -130,7 +130,7 @@ final class EndfieldLocomotion {
     private record Clip(float stride, float seconds, List<Frame> frames) {
     }
 
-    /** The source body's skeleton (the sample model's finished one) and the clips measured on it. */
+    /** The source body's skeleton and the clips measured on it. */
     private record Data(Vector3f upBody, Vector3f chest, Vector3f leftShoulder, Vector3f rightShoulder, float leg,
         float arm, float palm, Frame idle, Map<String, Clip> clips) {
         Vector3f shoulder(boolean left) {

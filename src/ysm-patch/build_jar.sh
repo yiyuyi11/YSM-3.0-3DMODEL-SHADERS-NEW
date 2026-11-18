@@ -3,17 +3,21 @@
 # NativeModelState and the Battlefield Movement compat) recompiled against it, the motion data added, and the Linux
 # native added beside the Windows one so one jar runs on both.
 #
-# Usage: build_jar.sh <v18 jar> <v11 jar with libysm.so> <libraries dir with gson/joml/fastutil/...> <MPData dir> <out.jar>
+# Usage: build_jar.sh <v18 jar> <v11 jar with libysm.so> <libraries dir with gson/joml/fastutil/...> <anchors.json | -> <out.jar>
+# anchors.json: locomotion anchor motion (motion/README.md), packed as endfield_locomotion.json; with - the jar ships
+# without it and imported models keep the procedural idle, walk and run.
 # YSM_NATIVE_DLL / YSM_NATIVE_SO: rebuilt natives (YesSteveModel-Native + native-patch) replacing the jar's ysm.dll /
 # libysm.so. Plain javac against the jar and the libraries is enough; a changed class that calls Minecraft uses the
 # production (SRG) member names the game jar there carries.
 set -euo pipefail
-base=$1 linux=$2 libraries=$3 mpdata=$4 out=$5
+base=$1 linux=$2 libraries=$3 motion=$4 out=$5
 here=$(cd "$(dirname "$0")" && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-python3 "$here/../motion/make_resource.py" "$mpdata" "$work/endfield_locomotion.json"
+if [ "$motion" != "-" ]; then
+    python3 "$here/../motion/make_resource.py" "$motion" "$work/endfield_locomotion.json"
+fi
 classpath="$base:$(find "$libraries" -name '*.jar' | tr '\n' ':')"
 javac --release 17 -nowarn -encoding UTF-8 -d "$work/classes" -cp "$classpath" $(find "$here/src" -name '*.java')
 
@@ -59,8 +63,9 @@ with zipfile.ZipFile(base) as source, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFL
         for file in files:
             path = os.path.join(root, file)
             target.write(path, os.path.relpath(path, classes))
-    target.write(os.path.join(work, "endfield_locomotion.json"),
-                 "com/elfmcys/ysm/format/parser/endfield_locomotion.json")
+    resource = os.path.join(work, "endfield_locomotion.json")
+    if os.path.exists(resource):
+        target.write(resource, "com/elfmcys/ysm/format/parser/endfield_locomotion.json")
     if "META-INF/native/libysm.so" not in source.namelist():
         if native_so:
             target.write(native_so, "META-INF/native/libysm.so")

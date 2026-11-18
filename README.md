@@ -11,6 +11,7 @@
 | `src/yesstevemodel` | YSM 3.0 Java 源码 fork：人形模型导入、动作、手持物品、表情 | Apache-2.0（见目录内 LICENSE / NOTICE） |
 | `src/yesstevemodel-native` | YSM 原生库 fork：几何 LOD、弹簧骨骼 LOD | Apache-2.0 |
 | `src/ysm-patch` | 打在 YSM 3.0-dev jar 上的补丁类和构建脚本 `build_jar.sh` | Apache-2.0 |
+| `src/motion` | 步态动作工具：把自备的挂点动作转成导入器用的步态数据，导入时按 IK 套到每个模型的骨架上（格式见目录内 README） | Apache-2.0 |
 | `src/render-npr` | 客户端卡通渲染模组，在光影包之后绘制角色；`config-default/` 为默认配置 | Apache-2.0 |
 | `src/fitbox` | 按模型实际形状计算碰撞箱和视角高度，支持趴下、潜行、游泳 | Apache-2.0 |
 | `src/model-guard` | 服务端模型加密与归属保护 | Apache-2.0 |
@@ -25,7 +26,7 @@
 ## 构建
 
 - Java 模组：各目录下的 `build.sh`（JDK 17）。
-- YSM jar：`src/ysm-patch/build_jar.sh`，需要 YSM 3.0-dev 原版 jar 和由 `src/yesstevemodel-native` 编译出的原生库（Windows `ysm-lod.dll`、Linux `libysm-lod-linux.so`）。
+- YSM jar：`src/ysm-patch/build_jar.sh <v18 jar> <v11 jar> <libraries 目录> <anchors.json 或 -> <输出 jar>`。需要 YSM 3.0-dev 原版 jar，以及由 `src/yesstevemodel-native` 编译出的原生库（Windows `ysm-lod.dll`、Linux `libysm-lod-linux.so`）。第 4 个参数是步态动作数据（见 `src/motion`），写 `-` 则用程序生成的步态。
 - 原生库：CMake + Conan，见 `src/yesstevemodel-native` 内说明。
 
 ## 使用
