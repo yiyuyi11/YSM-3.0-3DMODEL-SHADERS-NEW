@@ -1,0 +1,22 @@
+sources:
+  '20260817.0':
+    url: https://github.com/abseil/abseil-cpp
+    tag: '20260817.0'
+patches:
+  '20260817.0':
+  - patch_file: patches/20260817.0-0001-android-identity.patch
+  - patch_file: patches/20260817.0-0002-sysinfo-mimalloc.patch
+requirements:
+  - mimalloc/3.6.0@ysm/stable
+build:
+  global_link_targets:
+    - mimalloc-static
+  options:
+    ABSL_ENABLE_INSTALL: true
+    ABSL_PROPAGATE_CXX_STD: true
+    BUILD_TESTING: false
+    ABSL_MSVC_STATIC_RUNTIME: true
+  install: true
+package:
+  cmake_file_name: absl
+  cmake_target_name: absl

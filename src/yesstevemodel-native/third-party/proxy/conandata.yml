@@ -1,0 +1,18 @@
+sources:
+  4.1.0:
+    url: https://github.com/ngcpp/proxy
+    tag: 4.1.0
+patches:
+  4.1.0:
+  - patch_file: patches/proxy-clang-cl-no-unique-address.patch
+requirements: []
+build:
+  options: {}
+  install: false
+package:
+  cmake_file_name: proxy
+  cmake_target_name: msft_proxy4
+  manual_headers:
+  - dst: include
+    pattern: '*'
+    src: include

@@ -1,0 +1,30 @@
+diff --git a/include/proxy/v4/detail/compatibility_check.h b/include/proxy/v4/detail/compatibility_check.h
+index 0c06083..02b663a 100644
+--- a/include/proxy/v4/detail/compatibility_check.h
++++ b/include/proxy/v4/detail/compatibility_check.h
+@@ -11,7 +11,7 @@
+ 
+ // clang-cl miscalculates the layout of an empty [[msvc::no_unique_address]]
+ // member in a base class (llvm/llvm-project#143245), corrupting pro::proxy.
+-#if __has_cpp_attribute(msvc::no_unique_address)
++#if __has_cpp_attribute(msvc::no_unique_address) && !defined(YSM_CLANG_CL_NO_UNIQUE_ADDRESS_BROKEN)
+ namespace pro::inline v4::detail::compatibility_check {
+ struct empty {};
+ struct base {
+diff --git a/include/proxy/v4/detail/core.h b/include/proxy/v4/detail/core.h
+index 7ed3a24..9705463 100644
+--- a/include/proxy/v4/detail/core.h
++++ b/include/proxy/v4/detail/core.h
+@@ -18,7 +18,11 @@
+ 
+ #include "../proxy_macros.h"
+ 
+-#if __has_cpp_attribute(msvc::no_unique_address)
++#if defined(__clang__) && defined(_MSC_VER) && defined(YSM_CLANG_CL_NO_UNIQUE_ADDRESS_BROKEN)
++// Upstream clang-cl miscomputes [[msvc::no_unique_address]] in base classes (llvm/llvm-project#143245): empty
++// members take their own byte instead, a layout clang-cl computes consistently.
++#define PRO4D_NO_UNIQUE_ADDRESS_ATTRIBUTE maybe_unused
++#elif __has_cpp_attribute(msvc::no_unique_address)
+ #define PRO4D_NO_UNIQUE_ADDRESS_ATTRIBUTE msvc::no_unique_address
+ #elif __has_cpp_attribute(no_unique_address)
+ #define PRO4D_NO_UNIQUE_ADDRESS_ATTRIBUTE no_unique_address

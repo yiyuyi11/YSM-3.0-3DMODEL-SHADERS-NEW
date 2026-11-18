@@ -199,3 +199,15 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+---
+
+SCOPE
+
+This license covers the original source code in this repository: the Java
+sources under src/, the GLSL shaders, the Python and shell tooling, and the
+documentation.
+
+It does NOT cover any third-party character model, texture set or animation
+data that a user may combine this code with. If you use this code with someone
+else's model, you are responsible for holding the rights to that model.
