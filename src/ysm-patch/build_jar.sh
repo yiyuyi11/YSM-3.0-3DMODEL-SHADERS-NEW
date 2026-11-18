@@ -3,9 +3,9 @@
 # NativeModelState and the Battlefield Movement compat) recompiled against it, the motion data added, and the Linux
 # native added beside the Windows one so one jar runs on both.
 #
-# Usage: build_jar.sh <v18 jar> <v11 jar with libysm.so> <libraries dir with gson/joml/fastutil/...> <anchors.json | -> <out.jar>
-# anchors.json: locomotion anchor motion (motion/README.md), packed as endfield_locomotion.json; with - the jar ships
-# without it and imported models keep the procedural idle, walk and run.
+# Usage: build_jar.sh <v18 jar> <v11 jar with libysm.so> <libraries dir with gson/joml/fastutil/...> <anchors.json | --bundled | -> <out.jar>
+# --bundled: include the checked-in general locomotion resource. Pass a custom anchors.json to override it,
+# or - to leave the resource out and keep procedural idle, walk and run.
 # YSM_NATIVE_DLL / YSM_NATIVE_SO: rebuilt natives (YesSteveModel-Native + native-patch) replacing the jar's ysm.dll /
 # libysm.so. Plain javac against the jar and the libraries is enough; a changed class that calls Minecraft uses the
 # production (SRG) member names the game jar there carries.
@@ -15,7 +15,9 @@ here=$(cd "$(dirname "$0")" && pwd)
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-if [ "$motion" != "-" ]; then
+if [ "$motion" = "--bundled" ]; then
+    cp "$here/../motion/data/endfield_locomotion.json" "$work/endfield_locomotion.json"
+elif [ "$motion" != "-" ]; then
     python3 "$here/../motion/make_resource.py" "$motion" "$work/endfield_locomotion.json"
 fi
 classpath="$base:$(find "$libraries" -name '*.jar' | tr '\n' ':')"
@@ -46,6 +48,8 @@ natives = {"META-INF/native/ysm.dll": native_dll, "META-INF/native/libysm.so": n
 with zipfile.ZipFile(base) as source, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as target:
     for info in source.infolist():
         name = info.filename
+        if name == "com/elfmcys/ysm/format/parser/endfield_locomotion.json":
+            continue  # replace or omit any resource carried by the base jar
         if name.endswith(".class") and any(name == p + ".class" or name.startswith(p + "$") for p in replaced):
             continue  # recompiled below, nested classes included
         data = source.read(name)

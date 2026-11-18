@@ -119,6 +119,9 @@ processResources {
 
     from("LICENSE")
     from("NOTICE.md")
+    from(rootProject.file("../motion/data/endfield_locomotion.json")) {
+        into("com/elfmcys/ysm/format/parser")
+    }
 
     filesMatching("META-INF/mods.toml") {
         expand "mod_version": project.version

@@ -253,7 +253,9 @@ final class HumanoidImport implements Closeable {
             layout.emitMesh(result);
             result.morphs = layout.emitMorphs(result);
             // Locomotion paces the planted foot by the render scale, which the finished mesh sets.
+            var authored = java.util.Set.copyOf(animations.keySet());
             HumanoidMotion.addTo(animations, result.legs(), source.itemScale);
+            EndfieldLocomotion.addTo(animations, authored, result.skeleton(), result.legs());
             // Gun clips fit the arms to the finished skeleton and keep guns clear of the finished chest.
             TaczRetarget.addTo(animations, result.skeleton(), result.chestDepth(), source.itemScale);
             // Lying prone needs the finished hips and the render scale that places the prone camera.

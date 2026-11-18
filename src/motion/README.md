@@ -6,14 +6,18 @@
 - 模型自带的同名动作不会被替换。
 - 没有这份数据时，导入器使用程序生成的步态。
 
-本目录不附带任何动作数据，需要自己提供，例如在 Blender 里从自己的动画逐帧导出下面这几个挂点。
+`data/endfield_locomotion.json` 是现有的通用人形步态数据，包含待机、慢跑和冲刺所用的挂点轨迹。来源为《明日方舟：终末地》的通用女性体型挂点（Hypergryph），保留数据中的来源说明。它不含角色网格、蒙皮或贴图。
+
+如果要替换这份数据，可以在 Blender 里从自己的动画逐帧导出下列挂点。
 
 ## 用法
 
 ```bash
 # 单独检查并生成
 python3 make_resource.py anchors.json endfield_locomotion.json
-# 构建 YSM jar 时打进去；第 4 个参数写 - 则不带动作数据
+# 默认数据：第 4 个参数用 --bundled；用 - 则不带动作数据
+src/ysm-patch/build_jar.sh <v18 jar> <v11 jar> <libraries 目录> --bundled out.jar
+# 自备动作：第 4 个参数传入 anchors.json
 src/ysm-patch/build_jar.sh <v18 jar> <v11 jar> <libraries 目录> anchors.json out.jar
 ```
 
