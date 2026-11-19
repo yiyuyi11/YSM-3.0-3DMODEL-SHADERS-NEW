@@ -1,0 +1,86 @@
+== pelica (fit 494 ms)
+skinned mesh, 294 bones, 77948 samples: 59619 core (area 5.804), loose area 2.472
+  part HEAD            bone Head            10984 samples  capsule r=0.137 len=0.094 a=(-0.048 2.094 0.008) b=(0.046 2.093 0.007)
+  part CHEST           bone UpBody          16848 samples  box half=(0.248 0.314 0.225) c=(-0.011 1.565 0.046)
+  part PELVIS          bone AllBody           573 samples  box half=(0.172 0.116 0.122) c=(0.000 1.277 -0.003)
+  part LEFT_UPPER_ARM  bone LeftArm          7648 samples  capsule r=0.113 len=0.192 a=(-0.157 1.650 0.023) b=(-0.157 1.458 0.023)
+  part LEFT_FOREARM    bone LeftForeArm      3739 samples  capsule r=0.072 len=0.184 a=(-0.140 1.431 0.006) b=(-0.141 1.248 -0.011)
+  part LEFT_HAND       bone LeftHand         1203 samples  box half=(0.028 0.094 0.064) c=(-0.138 1.076 -0.051)
+  part RIGHT_UPPER_ARM bone RightArm         5651 samples  capsule r=0.110 len=0.077 a=(0.155 1.652 0.022) b=(0.155 1.575 0.022)
+  part RIGHT_FOREARM   bone RightForeArm     1637 samples  capsule r=0.072 len=0.189 a=(0.139 1.432 0.006) b=(0.140 1.244 -0.011)
+  part RIGHT_HAND      bone RightHand        1201 samples  box half=(0.028 0.093 0.064) c=(0.138 1.075 -0.051)
+  part LEFT_THIGH      bone LeftLeg           951 samples  capsule r=0.100 len=0.309 a=(-0.112 1.164 -0.006) b=(-0.112 0.855 -0.006)
+  part LEFT_SHIN       bone LeftLowerLeg     2042 samples  capsule r=0.073 len=0.444 a=(-0.115 0.673 0.020) b=(-0.115 0.229 0.033)
+  part LEFT_FOOT       bone LeftFoot         2127 samples  box half=(0.140 0.100 0.051) c=(-0.103 0.067 -0.020)
+  part RIGHT_THIGH     bone RightLeg         2271 samples  capsule r=0.103 len=0.302 a=(0.120 1.160 -0.008) b=(0.120 0.858 -0.008)
+  part RIGHT_SHIN      bone RightLowerLeg     731 samples  capsule r=0.073 len=0.390 a=(0.111 0.676 0.022) b=(0.111 0.286 0.034)
+  part RIGHT_FOOT      bone RightFoot        2013 samples  box half=(0.139 0.099 0.051) c=(0.103 0.066 -0.020)
+eye point (rest) -0.000 2.001 -0.025 on LeftEye
+render scale w=0.9077 h=0.9077, 15 hit templates
+  STANDING     clip=idle(model)      width=0.479 height=1.982 eye=1.809 (ahead 0.020, side 0.002) shapes=15
+  CROUCHING    clip=sneaking(model)  width=0.731 height=1.567 eye=1.391 (ahead 0.294, side -0.000) shapes=15
+  SWIMMING     clip=swim(builtin)    width=0.407 height=0.889 eye=0.708 (ahead 0.453, side -0.000) shapes=15
+  FALL_FLYING  clip=elytra_fly(builtin) width=0.407 height=0.717 eye=0.536 (ahead 0.574, side -0.000) shapes=15
+  SLEEPING     clip=sleep(builtin)   width=0.584 height=0.177 eye=0.032 (ahead 0.372, side -1.756) shapes=15
+  SPIN_ATTACK  clip=riptide(builtin) width=0.436 height=0.532 eye=0.345 (ahead 0.489, side -0.068) shapes=15
+  SITTING      clip=sit(model)       width=1.042 height=1.707 eye=1.534 (ahead 0.068, side -0.000) shapes=15
+  RIDING       clip=ride(builtin)    width=0.908 height=1.761 eye=1.589 (ahead 0.113, side -0.000) shapes=15
+  RIDING_SMALL clip=ride_pig(builtin) width=0.857 height=1.576 eye=1.402 (ahead -0.007, side -0.000) shapes=15
+  BOAT         clip=boat(builtin)    width=1.258 height=1.768 eye=1.594 (ahead 0.009, side -0.000) shapes=15
+  CRAWLING     clip=climbing(model)  width=0.433 height=0.573 eye=0.400 (ahead 0.600, side -0.000) shapes=15
+  PRONE_ENTER  clip=bfm:prone_enter(model) width=0.409 height=1.487 eye=1.309 (ahead 0.403, side -0.000) shapes=15
+  PRONE_EXIT   clip=bfm:prone_exit(model) width=0.409 height=1.487 eye=1.309 (ahead 0.403, side -0.000) shapes=15
+  SLIDE        clip=bfm:slide(model) width=0.408 height=1.106 eye=0.928 (ahead -0.380, side -0.000) shapes=15
+  SLIDE_CROUCH clip=bfm:slide_crouch(model) width=0.406 height=1.295 eye=1.122 (ahead -0.123, side -0.000) shapes=15
+  DIVE         clip=bfm:dive(builtin) width=0.407 height=0.579 eye=0.349 (ahead 0.725, side -0.000) shapes=15
+  GUN_HOLD_RIFLE clip=idle+tac:hold:rifle(model+model) width=0.486 height=1.948 eye=1.770 (ahead 0.173, side 0.044) shapes=15
+  GUN_HOLD_PISTOL clip=idle+tac:hold:pistol(model+model) width=0.434 height=1.982 eye=1.808 (ahead 0.095, side -0.016) shapes=15
+  GUN_AIM_RIFLE clip=idle+tac:aim:rifle(model+model) width=0.474 height=1.970 eye=1.790 (ahead 0.118, side 0.085) shapes=15
+  GUN_AIM_PISTOL clip=idle+tac:aim:pistol(model+model) width=0.435 height=1.981 eye=1.808 (ahead 0.095, side -0.011) shapes=15
+  GUN_PRONE_RIFLE clip=climbing+tac:climbing:rifle(model+model) width=0.484 height=0.440 eye=0.241 (ahead 1.021, side -0.010) shapes=15
+  GUN_PRONE_PISTOL clip=climbing+tac:climbing:pistol(model+model) width=0.477 height=0.421 eye=0.188 (ahead 1.025, side -0.010) shapes=15
+  STANDING shapes (model-local blocks, model faces -Z):
+    HEAD            capsule a=(-0.042 1.893 0.010) b=(0.043 1.892 0.008) r=0.124
+    CHEST           box c=(-0.008 1.412 0.044) half=(0.225 0.285 0.204) u=(1.00 0.00 0.00)
+    PELVIS          box c=(0.002 1.151 -0.000) half=(0.156 0.105 0.111) u=(1.00 0.00 0.00)
+    LEFT_UPPER_ARM  capsule a=(-0.169 1.499 0.014) b=(-0.217 1.331 0.006) r=0.103
+    LEFT_FOREARM    capsule a=(-0.206 1.303 -0.006) b=(-0.250 1.143 -0.025) r=0.066
+    LEFT_HAND       box c=(-0.266 0.989 -0.063) half=(0.026 0.085 0.058) u=(1.00 -0.00 -0.00)
+    RIGHT_UPPER_ARM capsule a=(0.172 1.502 0.024) b=(0.193 1.436 0.029) r=0.100
+    RIGHT_FOREARM   capsule a=(0.215 1.307 0.030) b=(0.264 1.143 0.031) r=0.066
+    RIGHT_HAND      box c=(0.282 0.990 0.002) half=(0.026 0.084 0.058) u=(1.00 0.00 0.00)
+    LEFT_THIGH      capsule a=(-0.106 1.050 -0.010) b=(-0.125 0.771 -0.035) r=0.091
+    LEFT_SHIN       capsule a=(-0.136 0.609 -0.017) b=(-0.155 0.211 0.040) r=0.066
+    LEFT_FOOT       box c=(-0.146 0.061 -0.008) half=(0.127 0.091 0.046) u=(0.02 0.64 0.77)
+    RIGHT_THIGH     capsule a=(0.115 1.047 -0.006) b=(0.129 0.773 -0.012) r=0.094
+    RIGHT_SHIN      capsule a=(0.126 0.610 0.018) b=(0.137 0.262 0.080) r=0.066
+    RIGHT_FOOT      box c=(0.134 0.060 0.040) half=(0.126 0.090 0.046) u=(-0.01 0.63 0.78)
+  CROUCHING shapes (model-local blocks, model faces -Z):
+    HEAD            capsule a=(-0.043 1.478 -0.271) b=(0.042 1.477 -0.273) r=0.124
+    CHEST           box c=(-0.010 1.062 -0.060) half=(0.225 0.285 0.204) u=(1.00 0.00 0.00)
+    PELVIS          box c=(0.000 0.787 -0.002) half=(0.156 0.105 0.111) u=(1.00 0.00 0.00)
+    LEFT_UPPER_ARM  capsule a=(-0.163 1.102 -0.176) b=(-0.199 0.933 -0.203) r=0.103
+    LEFT_FOREARM    capsule a=(-0.183 0.913 -0.238) b=(-0.200 0.784 -0.343) r=0.066
+    LEFT_HAND       box c=(-0.207 0.674 -0.459) half=(0.026 0.085 0.058) u=(0.97 -0.22 0.13)
+    RIGHT_UPPER_ARM capsule a=(0.161 1.103 -0.177) b=(0.175 1.035 -0.187) r=0.100
+    RIGHT_FOREARM   capsule a=(0.182 0.913 -0.237) b=(0.199 0.781 -0.344) r=0.066
+    RIGHT_HAND      box c=(0.207 0.672 -0.459) half=(0.026 0.084 0.058) u=(0.97 0.22 -0.13)
+    LEFT_THIGH      capsule a=(-0.099 0.716 -0.065) b=(-0.089 0.540 -0.284) r=0.091
+    LEFT_SHIN       capsule a=(-0.086 0.432 -0.322) b=(-0.066 0.096 -0.100) r=0.066
+    LEFT_FOOT       box c=(-0.051 -0.056 -0.135) half=(0.127 0.091 0.046) u=(-0.01 0.64 0.77)
+    RIGHT_THIGH     capsule a=(0.105 0.698 -0.053) b=(0.092 0.472 -0.208) r=0.094
+    RIGHT_SHIN      capsule a=(0.077 0.359 -0.214) b=(0.064 0.134 0.060) r=0.066
+    RIGHT_FOOT      box c=(0.050 -0.053 0.071) half=(0.126 0.090 0.046) u=(0.04 0.63 0.78)
+  ray checks, standing (ray along +Z from z=-2, model-local):
+    between the legs at shin height    x= 0.000 y= 0.410  inside AABB=true  shapes: miss
+    through the left shin              x=-0.146 y= 0.410  inside AABB=true  shapes: HIT LEFT_SHIN at z=-0.055
+    4 cm outside the left upper arm    x=-0.336 y= 1.415  inside AABB=false shapes: miss
+    through the left upper arm         x=-0.193 y= 1.415  inside AABB=true  shapes: HIT CHEST at z=-0.160
+    chest center                       x=-0.008 y= 1.412  inside AABB=true  shapes: HIT CHEST at z=-0.160
+    5 cm above the head                x= 0.001 y= 2.067  inside AABB=false shapes: miss
+  clip idle(model) RightArm rotation (4.24, -14.35, 1.40)
+  clip idle(model) LeftArm rotation (-2.98, 13.33, -1.72)
+  clip idle(model) RightForeArm rotation (1.48, -0.02, -0.34)
+  clip sneaking(model) RightArm rotation (-38.00, 0.00, 0.00)
+  clip sneaking(model) LeftArm rotation (-38.00, 0.00, 0.00)
+  clip sneaking(model) RightForeArm rotation (-25.00, 0.00, 0.00)

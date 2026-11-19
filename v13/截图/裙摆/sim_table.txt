@@ -1,0 +1,18 @@
+old standing: max hem displacement from rest 3.7 cm, penetrating verts 0
+old stock    10 fps | walk: 139.1 verts/frame, 100% frames >10, p95 depth  7.9 cm | run:  55.0 verts/frame,  73% frames >10, p95 depth  5.8 cm
+old stock    30 fps | walk:  43.8 verts/frame,  95% frames >10, p95 depth  8.4 cm | run:  39.2 verts/frame,  95% frames >10, p95 depth  7.4 cm
+old stock    60 fps | walk:  60.0 verts/frame, 100% frames >10, p95 depth  7.7 cm | run:  35.4 verts/frame,  57% frames >10, p95 depth  7.9 cm
+old stock   144 fps | walk:  76.9 verts/frame,  80% frames >10, p95 depth  7.9 cm | run:  44.6 verts/frame,  66% frames >10, p95 depth  7.8 cm
+old patched  10 fps | walk:  70.3 verts/frame,  67% frames >10, p95 depth  7.8 cm | run:  35.5 verts/frame,  53% frames >10, p95 depth  6.9 cm
+old patched  30 fps | walk:  75.6 verts/frame,  70% frames >10, p95 depth  7.9 cm | run:  41.5 verts/frame,  60% frames >10, p95 depth  7.6 cm
+old patched  60 fps | walk:  75.6 verts/frame,  76% frames >10, p95 depth  7.9 cm | run:  41.6 verts/frame,  62% frames >10, p95 depth  7.7 cm
+old patched 144 fps | walk:  93.9 verts/frame,  96% frames >10, p95 depth  8.3 cm | run:  92.8 verts/frame,  86% frames >10, p95 depth  7.8 cm
+new standing: max hem displacement from rest 6.9 cm, penetrating verts 0
+new stock    10 fps | walk:  36.5 verts/frame,  73% frames >10, p95 depth  7.3 cm | run:  21.3 verts/frame,  40% frames >10, p95 depth  5.3 cm
+new stock    30 fps | walk:   0.2 verts/frame,   0% frames >10, p95 depth  1.1 cm | run:   4.0 verts/frame,  19% frames >10, p95 depth  3.2 cm
+new stock    60 fps | walk:   2.7 verts/frame,   1% frames >10, p95 depth  4.9 cm | run:   3.6 verts/frame,   2% frames >10, p95 depth  5.7 cm
+new stock   144 fps | walk:   1.4 verts/frame,   1% frames >10, p95 depth  2.9 cm | run:   6.7 verts/frame,  25% frames >10, p95 depth  7.1 cm
+new patched  10 fps | walk:   2.3 verts/frame,   7% frames >10, p95 depth  3.6 cm | run:   9.5 verts/frame,  33% frames >10, p95 depth  6.7 cm
+new patched  30 fps | walk:   2.3 verts/frame,   9% frames >10, p95 depth  3.7 cm | run:   9.3 verts/frame,  35% frames >10, p95 depth  6.6 cm
+new patched  60 fps | walk:   2.3 verts/frame,   7% frames >10, p95 depth  3.7 cm | run:   9.4 verts/frame,  36% frames >10, p95 depth  6.8 cm
+new patched 144 fps | walk:   3.2 verts/frame,   3% frames >10, p95 depth  4.7 cm | run:   3.7 verts/frame,   5% frames >10, p95 depth  5.3 cm

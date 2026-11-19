@@ -1,0 +1,842 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "parallel2": {
+   "loop": true,
+   "bones": {
+    "LeftThumb1": {
+     "rotation": [
+      7.17,
+      22.14,
+      27.68
+     ]
+    },
+    "LeftThumb2": {
+     "rotation": [
+      21.63,
+      31.39,
+      51.46
+     ]
+    },
+    "LeftThumb3": {
+     "rotation": [
+      21.63,
+      31.39,
+      51.46
+     ]
+    },
+    "LeftIndex1": {
+     "rotation": [
+      -0.2,
+      -0.97,
+      -6.37
+     ]
+    },
+    "LeftIndex2": {
+     "rotation": [
+      2.03,
+      2.78,
+      22.45
+     ]
+    },
+    "LeftIndex3": {
+     "rotation": [
+      1.34,
+      2.85,
+      20.5
+     ]
+    },
+    "LeftMiddle1": {
+     "rotation": [
+      -0.14,
+      -0.82,
+      -11.16
+     ]
+    },
+    "LeftMiddle2": {
+     "rotation": [
+      1.51,
+      1.76,
+      31.61
+     ]
+    },
+    "LeftMiddle3": {
+     "rotation": [
+      0.97,
+      1.77,
+      27.43
+     ]
+    },
+    "LeftRing1": {
+     "rotation": [
+      0.09,
+      0.49,
+      -19.65
+     ]
+    },
+    "LeftRing2": {
+     "rotation": [
+      -0.62,
+      -0.58,
+      34.19
+     ]
+    },
+    "LeftRing3": {
+     "rotation": [
+      -0.4,
+      -0.58,
+      28.14
+     ]
+    },
+    "LeftLittle1": {
+     "rotation": [
+      0.36,
+      1.0,
+      -9.77
+     ]
+    },
+    "LeftLittle2": {
+     "rotation": [
+      -0.16,
+      -0.22,
+      2.56
+     ]
+    },
+    "LeftLittle3": {
+     "rotation": [
+      -0.15,
+      -0.31,
+      3.16
+     ]
+    },
+    "RightThumb1": {
+     "rotation": [
+      -0.09,
+      2.08,
+      2.28
+     ]
+    },
+    "RightThumb2": {
+     "rotation": [
+      -0.39,
+      4.59,
+      5.05
+     ]
+    },
+    "RightThumb3": {
+     "rotation": [
+      -0.39,
+      4.59,
+      5.05
+     ]
+    },
+    "RightMiddle1": {
+     "rotation": [
+      0.44,
+      -1.06,
+      -15.47
+     ]
+    },
+    "RightMiddle2": {
+     "rotation": [
+      0.19,
+      -0.36,
+      -5.49
+     ]
+    },
+    "RightMiddle3": {
+     "rotation": [
+      0.19,
+      -0.55,
+      -7.86
+     ]
+    },
+    "RightRing1": {
+     "rotation": [
+      -0.15,
+      0.31,
+      -13.59
+     ]
+    },
+    "RightRing2": {
+     "rotation": [
+      -0.05,
+      0.08,
+      -3.59
+     ]
+    },
+    "RightRing3": {
+     "rotation": [
+      -0.05,
+      0.12,
+      -5.19
+     ]
+    },
+    "RightLittle1": {
+     "rotation": [
+      0.18,
+      -0.43,
+      4.29
+     ]
+    },
+    "RightLittle2": {
+     "rotation": [
+      0.72,
+      -1.37,
+      14.27
+     ]
+    },
+    "RightLittle3": {
+     "rotation": [
+      0.35,
+      -0.96,
+      9.44
+     ]
+    }
+   }
+  }
+ },
+ "fpbench": {
+  "gun": "tacz:m4a1",
+  "clip": "idle",
+  "t": 0.0,
+  "clearance_px": 0.1,
+  "curl": {
+   "LeftThumb": [
+    39.6,
+    66.0,
+    66.0
+   ],
+   "LeftIndex": [
+    8.56,
+    47.53,
+    35.65
+   ],
+   "LeftMiddle": [
+    3.81,
+    56.62,
+    42.47
+   ],
+   "LeftRing": [
+    0.34,
+    64.19,
+    48.14
+   ],
+   "LeftLittle": [
+    15.19,
+    37.56,
+    28.17
+   ],
+   "RightThumb": [
+    1.91,
+    3.19,
+    3.19
+   ],
+   "RightMiddle": [
+    30.5,
+    30.5,
+    22.88
+   ],
+   "RightRing": [
+    33.59,
+    33.59,
+    25.2
+   ],
+   "RightLittle": [
+    20.69,
+    20.69,
+    15.52
+   ]
+  },
+  "importer_tables": {
+   "Left": "FITTED_SUPPORT_HAND = Map.of(\"Thumb\", new float[] {39.6f, 66f, 66f}, \"Index\", new float[] {8.56f, 47.53f, 35.65f}, \"Middle\", new float[] {3.81f, 56.62f, 42.47f}, \"Ring\", new float[] {0.34f, 64.19f, 48.14f}, \"Little\", new float[] {15.19f, 37.56f, 28.17f})",
+   "Right": "FITTED_GUN_HAND = Map.of(\"Thumb\", new float[] {1.91f, 3.19f, 3.19f}, \"Middle\", new float[] {30.5f, 30.5f, 22.88f}, \"Ring\", new float[] {33.59f, 33.59f, 25.2f}, \"Little\", new float[] {20.69f, 20.69f, 15.52f})"
+  },
+  "importer_layer": {
+   "bones": {
+    "LeftThumb1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.11 : (ctrl.tac_grip('fitted') ? 7.17 : (ctrl.tac_hold_gun ? 0.75 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 2.68 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -3.38 : (ctrl.tac_grip('fitted') ? 22.14 : (ctrl.tac_hold_gun ? 6.03 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 13.22 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -3.69 : (ctrl.tac_grip('fitted') ? 27.68 : (ctrl.tac_hold_gun ? 6.72 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 15.28 : 0)))"
+     ]
+    },
+    "LeftThumb2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.44 : (ctrl.tac_grip('fitted') ? 21.63 : (ctrl.tac_hold_gun ? 0.99 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.63 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -6.74 : (ctrl.tac_grip('fitted') ? 31.39 : (ctrl.tac_hold_gun ? 5.32 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 13.01 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -7.40 : (ctrl.tac_grip('fitted') ? 51.46 : (ctrl.tac_hold_gun ? 6.06 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 15.65 : 0)))"
+     ]
+    },
+    "LeftThumb3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.44 : (ctrl.tac_grip('fitted') ? 21.63 : (ctrl.tac_hold_gun ? 0.69 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.63 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -6.74 : (ctrl.tac_grip('fitted') ? 31.39 : (ctrl.tac_hold_gun ? 4.00 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 13.01 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -7.40 : (ctrl.tac_grip('fitted') ? 51.46 : (ctrl.tac_hold_gun ? 4.53 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 15.65 : 0)))"
+     ]
+    },
+    "LeftIndex1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.30 : (ctrl.tac_grip('fitted') ? -0.20 : (ctrl.tac_hold_gun ? 0.13 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 6.99 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -2.28 : (ctrl.tac_grip('fitted') ? -0.97 : (ctrl.tac_hold_gun ? 0.44 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 6.42 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -14.83 : (ctrl.tac_grip('fitted') ? -6.37 : (ctrl.tac_hold_gun ? 2.97 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 65.05 : 0)))"
+     ]
+    },
+    "LeftIndex2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.82 : (ctrl.tac_grip('fitted') ? 2.03 : (ctrl.tac_hold_gun ? 0.07 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 8.79 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -3.72 : (ctrl.tac_grip('fitted') ? 2.78 : (ctrl.tac_hold_gun ? 0.14 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 5.08 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -24.74 : (ctrl.tac_grip('fitted') ? 22.45 : (ctrl.tac_hold_gun ? 0.99 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 70.32 : 0)))"
+     ]
+    },
+    "LeftIndex3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.30 : (ctrl.tac_grip('fitted') ? 1.34 : (ctrl.tac_hold_gun ? -0.04 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 4.09 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -2.28 : (ctrl.tac_grip('fitted') ? 2.85 : (ctrl.tac_hold_gun ? -0.15 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 5.36 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -14.83 : (ctrl.tac_grip('fitted') ? 20.50 : (ctrl.tac_hold_gun ? -0.99 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 44.87 : 0)))"
+     ]
+    },
+    "LeftMiddle1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.14 : (ctrl.tac_grip('fitted') ? -0.14 : (ctrl.tac_hold_gun ? 0.85 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.37 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -1.10 : (ctrl.tac_grip('fitted') ? -0.82 : (ctrl.tac_hold_gun ? 1.63 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.09 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -14.96 : (ctrl.tac_grip('fitted') ? -11.16 : (ctrl.tac_hold_gun ? 24.96 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 65.01 : 0)))"
+     ]
+    },
+    "LeftMiddle2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.40 : (ctrl.tac_grip('fitted') ? 1.51 : (ctrl.tac_hold_gun ? 1.12 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 4.23 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -1.80 : (ctrl.tac_grip('fitted') ? 1.76 : (ctrl.tac_hold_gun ? 1.46 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 2.44 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -24.94 : (ctrl.tac_grip('fitted') ? 31.61 : (ctrl.tac_hold_gun ? 24.98 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 70.07 : 0)))"
+     ]
+    },
+    "LeftMiddle3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.14 : (ctrl.tac_grip('fitted') ? 0.97 : (ctrl.tac_hold_gun ? 0.42 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 1.98 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -1.10 : (ctrl.tac_grip('fitted') ? 1.77 : (ctrl.tac_hold_gun ? 1.03 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 2.59 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -14.96 : (ctrl.tac_grip('fitted') ? 27.43 : (ctrl.tac_hold_gun ? 14.97 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 44.97 : 0)))"
+     ]
+    },
+    "LeftRing1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.09 : (ctrl.tac_grip('fitted') ? 0.09 : (ctrl.tac_hold_gun ? -0.36 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -1.11 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.50 : (ctrl.tac_grip('fitted') ? 0.49 : (ctrl.tac_hold_gun ? -0.55 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -0.93 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -19.99 : (ctrl.tac_grip('fitted') ? -19.65 : (ctrl.tac_hold_gun ? 26.00 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 60.00 : 0)))"
+     ]
+    },
+    "LeftRing2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.19 : (ctrl.tac_grip('fitted') ? -0.62 : (ctrl.tac_hold_gun ? -0.44 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -1.38 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.72 : (ctrl.tac_grip('fitted') ? -0.58 : (ctrl.tac_hold_gun ? -0.48 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -0.72 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -29.99 : (ctrl.tac_grip('fitted') ? 34.19 : (ctrl.tac_hold_gun ? 26.00 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 65.01 : 0)))"
+     ]
+    },
+    "LeftRing3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.09 : (ctrl.tac_grip('fitted') ? -0.40 : (ctrl.tac_hold_gun ? -0.19 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -0.64 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.50 : (ctrl.tac_grip('fitted') ? -0.58 : (ctrl.tac_hold_gun ? -0.36 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -0.76 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -19.99 : (ctrl.tac_grip('fitted') ? 28.14 : (ctrl.tac_hold_gun ? 16.00 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 40.00 : 0)))"
+     ]
+    },
+    "LeftLittle1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.58 : (ctrl.tac_grip('fitted') ? 0.36 : (ctrl.tac_hold_gun ? -1.80 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -4.55 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 2.62 : (ctrl.tac_grip('fitted') ? 1.00 : (ctrl.tac_hold_gun ? -2.27 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -3.50 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -24.87 : (ctrl.tac_grip('fitted') ? -9.77 : (ctrl.tac_hold_gun ? 26.97 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 55.07 : 0)))"
+     ]
+    },
+    "LeftLittle2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 1.12 : (ctrl.tac_grip('fitted') ? -0.16 : (ctrl.tac_hold_gun ? -1.98 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -5.64 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 3.56 : (ctrl.tac_grip('fitted') ? -0.22 : (ctrl.tac_hold_gun ? -1.82 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -2.63 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -34.84 : (ctrl.tac_grip('fitted') ? 2.56 : (ctrl.tac_hold_gun ? 25.01 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 60.19 : 0)))"
+     ]
+    },
+    "LeftLittle3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.58 : (ctrl.tac_grip('fitted') ? -0.15 : (ctrl.tac_hold_gun ? -0.87 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -2.52 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 2.62 : (ctrl.tac_grip('fitted') ? -0.31 : (ctrl.tac_hold_gun ? -1.37 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -2.76 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -24.87 : (ctrl.tac_grip('fitted') ? 3.16 : (ctrl.tac_hold_gun ? 14.96 : ((ysm.has_offhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 34.98 : 0)))"
+     ]
+    },
+    "RightThumb1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.11 : (ctrl.tac_grip('fitted') ? -0.09 : (ctrl.tac_hold_gun ? 0.75 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 2.68 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 3.38 : (ctrl.tac_grip('fitted') ? 2.08 : (ctrl.tac_hold_gun ? -6.03 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -13.22 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 3.69 : (ctrl.tac_grip('fitted') ? 2.28 : (ctrl.tac_hold_gun ? -6.72 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -15.28 : 0)))"
+     ]
+    },
+    "RightThumb2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.44 : (ctrl.tac_grip('fitted') ? -0.39 : (ctrl.tac_hold_gun ? 0.99 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.63 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 6.74 : (ctrl.tac_grip('fitted') ? 4.59 : (ctrl.tac_hold_gun ? -5.32 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -13.01 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 7.40 : (ctrl.tac_grip('fitted') ? 5.05 : (ctrl.tac_hold_gun ? -6.06 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -15.65 : 0)))"
+     ]
+    },
+    "RightThumb3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.44 : (ctrl.tac_grip('fitted') ? -0.39 : (ctrl.tac_hold_gun ? 0.69 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.63 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 6.74 : (ctrl.tac_grip('fitted') ? 4.59 : (ctrl.tac_hold_gun ? -4.00 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -13.01 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 7.40 : (ctrl.tac_grip('fitted') ? 5.05 : (ctrl.tac_hold_gun ? -4.53 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -15.65 : 0)))"
+     ]
+    },
+    "RightMiddle1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.14 : (ctrl.tac_grip('fitted') ? 0.44 : (ctrl.tac_hold_gun ? 0.85 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.37 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 1.10 : (ctrl.tac_grip('fitted') ? -1.06 : (ctrl.tac_hold_gun ? -1.63 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -3.09 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 14.96 : (ctrl.tac_grip('fitted') ? -15.47 : (ctrl.tac_hold_gun ? -24.96 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -65.01 : 0)))"
+     ]
+    },
+    "RightMiddle2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.40 : (ctrl.tac_grip('fitted') ? 0.19 : (ctrl.tac_hold_gun ? 1.12 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 4.23 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 1.80 : (ctrl.tac_grip('fitted') ? -0.36 : (ctrl.tac_hold_gun ? -1.46 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -2.44 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 24.94 : (ctrl.tac_grip('fitted') ? -5.49 : (ctrl.tac_hold_gun ? -24.98 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -70.07 : 0)))"
+     ]
+    },
+    "RightMiddle3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.14 : (ctrl.tac_grip('fitted') ? 0.19 : (ctrl.tac_hold_gun ? 0.42 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 1.98 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 1.10 : (ctrl.tac_grip('fitted') ? -0.55 : (ctrl.tac_hold_gun ? -1.03 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -2.58 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 14.96 : (ctrl.tac_grip('fitted') ? -7.86 : (ctrl.tac_hold_gun ? -14.97 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -44.97 : 0)))"
+     ]
+    },
+    "RightRing1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.09 : (ctrl.tac_grip('fitted') ? -0.15 : (ctrl.tac_hold_gun ? -0.36 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -1.11 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.50 : (ctrl.tac_grip('fitted') ? 0.31 : (ctrl.tac_hold_gun ? 0.55 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 0.93 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 19.99 : (ctrl.tac_grip('fitted') ? -13.59 : (ctrl.tac_hold_gun ? -26.00 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -60.00 : 0)))"
+     ]
+    },
+    "RightRing2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.19 : (ctrl.tac_grip('fitted') ? -0.05 : (ctrl.tac_hold_gun ? -0.45 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -1.38 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.73 : (ctrl.tac_grip('fitted') ? 0.08 : (ctrl.tac_hold_gun ? 0.48 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 0.72 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 29.99 : (ctrl.tac_grip('fitted') ? -3.59 : (ctrl.tac_hold_gun ? -26.00 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -65.01 : 0)))"
+     ]
+    },
+    "RightRing3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.09 : (ctrl.tac_grip('fitted') ? -0.05 : (ctrl.tac_hold_gun ? -0.19 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -0.64 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -0.50 : (ctrl.tac_grip('fitted') ? 0.12 : (ctrl.tac_hold_gun ? 0.36 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 0.76 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 19.99 : (ctrl.tac_grip('fitted') ? -5.19 : (ctrl.tac_hold_gun ? -16.00 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -40.00 : 0)))"
+     ]
+    },
+    "RightLittle1": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.58 : (ctrl.tac_grip('fitted') ? 0.18 : (ctrl.tac_hold_gun ? -1.80 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -4.56 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -2.62 : (ctrl.tac_grip('fitted') ? -0.43 : (ctrl.tac_hold_gun ? 2.27 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 3.50 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 24.87 : (ctrl.tac_grip('fitted') ? 4.29 : (ctrl.tac_hold_gun ? -26.97 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -55.07 : 0)))"
+     ]
+    },
+    "RightLittle2": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 1.12 : (ctrl.tac_grip('fitted') ? 0.72 : (ctrl.tac_hold_gun ? -1.98 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -5.64 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -3.56 : (ctrl.tac_grip('fitted') ? -1.37 : (ctrl.tac_hold_gun ? 1.82 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 2.63 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 34.84 : (ctrl.tac_grip('fitted') ? 14.27 : (ctrl.tac_hold_gun ? -25.01 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -60.19 : 0)))"
+     ]
+    },
+    "RightLittle3": {
+     "rotation": [
+      "(ctrl.elytra_fly || ctrl.swim) ? 0.58 : (ctrl.tac_grip('fitted') ? 0.35 : (ctrl.tac_hold_gun ? -0.87 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -2.52 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? -2.62 : (ctrl.tac_grip('fitted') ? -0.96 : (ctrl.tac_hold_gun ? 1.37 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? 2.76 : 0)))",
+      "(ctrl.elytra_fly || ctrl.swim) ? 24.87 : (ctrl.tac_grip('fitted') ? 9.44 : (ctrl.tac_hold_gun ? -14.96 : ((ysm.has_mainhand || ctrl.ladder_up || ctrl.ladder_down || ctrl.ladder_stillness) ? -34.98 : 0)))"
+     ]
+    }
+   }
+  },
+  "note": "rotation = keyframe degrees (X/Y negated, added to the bone's rest) of the finger layer; importer_tables = per-segment curls for HumanoidImport FITTED_* tables (fitted guns); feed back with --pose",
+  "metrics_before": {
+   "gun": "tacz:m4a1",
+   "clip": "idle",
+   "t": 0.0,
+   "grip_fitted": true,
+   "units": "model px (1/16 block, view space)",
+   "hands": {
+    "Left": {
+     "palm_center_view_px": [
+      3.142,
+      -5.507,
+      -23.2
+     ],
+     "fingers": {
+      "Thumb": {
+       "penetration_px": 0.186,
+       "inside_vertices": 35,
+       "vertices": 186,
+       "gap_px": 0.0,
+       "nearest_part": "octagon",
+       "tip_gap_px": 0.211
+      },
+      "Index": {
+       "penetration_px": 0.304,
+       "inside_vertices": 113,
+       "vertices": 203,
+       "gap_px": 0.0,
+       "nearest_part": "octagon",
+       "tip_gap_px": -0.142
+      },
+      "Middle": {
+       "penetration_px": 0.086,
+       "inside_vertices": 50,
+       "vertices": 207,
+       "gap_px": 0.0,
+       "nearest_part": "bone",
+       "tip_gap_px": 0.045
+      },
+      "Ring": {
+       "penetration_px": 0.094,
+       "inside_vertices": 58,
+       "vertices": 178,
+       "gap_px": 0.0,
+       "nearest_part": "bone",
+       "tip_gap_px": -0.015
+      },
+      "Little": {
+       "penetration_px": 0.09,
+       "inside_vertices": 85,
+       "vertices": 202,
+       "gap_px": 0.0,
+       "nearest_part": "bone",
+       "tip_gap_px": -0.086
+      }
+     },
+     "palm": {
+      "penetration_px": 0.086,
+      "inside_vertices": 38,
+      "vertices": 227,
+      "gap_px": 0.0,
+      "nearest_part": "bone"
+     },
+     "forearm": {
+      "penetration_px": 0.0,
+      "inside_vertices": 0,
+      "vertices": 10270,
+      "gap_px": 0.536,
+      "nearest_part": "upper"
+     },
+     "grip": {
+      "parts": [
+       "barrel2",
+       "bone",
+       "octagon"
+      ],
+      "boxes": 54,
+      "palm_to_axis_px": 1.697,
+      "knuckle_line_vs_axis_deg": 28.39,
+      "finger_dir_vs_axis_deg": 52.51,
+      "palm_surface_gap_px": 0.425,
+      "thumb_opposition_deg": 99.77
+     },
+     "thumb": {
+      "tip_gap_px": 0.211,
+      "tip_to_index_tip_px": 1.814,
+      "tip_to_palm_px": 3.46
+     },
+     "wrist": {
+      "flexion_deg": 30.09,
+      "deviation_deg": -29.35,
+      "twist_deg": -78.31,
+      "limit_violations_deg": {}
+     }
+    },
+    "Right": {
+     "palm_center_view_px": [
+      5.637,
+      -7.249,
+      -7.09
+     ],
+     "fingers": {
+      "Thumb": {
+       "penetration_px": 0.111,
+       "inside_vertices": 22,
+       "vertices": 186,
+       "gap_px": 0.0,
+       "nearest_part": "grip",
+       "tip_gap_px": 0.66
+      },
+      "Index": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 203,
+       "gap_px": 0.565,
+       "nearest_part": "upper",
+       "tip_gap_px": 0.613
+      },
+      "Middle": {
+       "penetration_px": 0.033,
+       "inside_vertices": 3,
+       "vertices": 207,
+       "gap_px": 0.0,
+       "nearest_part": "grip",
+       "tip_gap_px": 1.0
+      },
+      "Ring": {
+       "penetration_px": 0.099,
+       "inside_vertices": 9,
+       "vertices": 178,
+       "gap_px": 0.0,
+       "nearest_part": "grip",
+       "tip_gap_px": 1.032
+      },
+      "Little": {
+       "penetration_px": 0.176,
+       "inside_vertices": 22,
+       "vertices": 202,
+       "gap_px": 0.0,
+       "nearest_part": "grip",
+       "tip_gap_px": 0.881
+      }
+     },
+     "palm": {
+      "penetration_px": 0.0,
+      "inside_vertices": 0,
+      "vertices": 225,
+      "gap_px": 0.423,
+      "nearest_part": "grip"
+     },
+     "forearm": {
+      "penetration_px": 0.0,
+      "inside_vertices": 0,
+      "vertices": 5945,
+      "gap_px": 1.613,
+      "nearest_part": "AR"
+     },
+     "grip": {
+      "parts": [
+       "grip",
+       "upper"
+      ],
+      "boxes": 13,
+      "palm_to_axis_px": 2.333,
+      "knuckle_line_vs_axis_deg": 23.75,
+      "finger_dir_vs_axis_deg": 87.63,
+      "palm_surface_gap_px": 1.414,
+      "thumb_opposition_deg": 101.11
+     },
+     "thumb": {
+      "tip_gap_px": 0.66,
+      "tip_to_index_tip_px": 4.035,
+      "tip_to_palm_px": 3.565
+     },
+     "wrist": {
+      "flexion_deg": -9.0,
+      "deviation_deg": -39.08,
+      "twist_deg": 3.17,
+      "limit_violations_deg": {
+       "deviation": -9.08
+      }
+     }
+    }
+   },
+   "collisions": {
+    "hand_hand_min_px": 10.988,
+    "arm_arm_min_px": 10.241,
+    "hand_gun_inside_vertices": {
+     "Left": 379,
+     "Right": 56
+    },
+    "forearm_gun_inside_vertices": {
+     "Left": 0,
+     "Right": 0
+    }
+   }
+  },
+  "metrics_after": {
+   "gun": "tacz:m4a1",
+   "clip": "idle",
+   "t": 0.0,
+   "grip_fitted": true,
+   "units": "model px (1/16 block, view space)",
+   "hands": {
+    "Left": {
+     "palm_center_view_px": [
+      3.142,
+      -5.507,
+      -23.2
+     ],
+     "fingers": {
+      "Thumb": {
+       "penetration_px": 0.086,
+       "inside_vertices": 9,
+       "vertices": 186,
+       "gap_px": 0.0,
+       "nearest_part": "bone",
+       "tip_gap_px": 0.781
+      },
+      "Index": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 203,
+       "gap_px": 0.072,
+       "nearest_part": "octagon",
+       "tip_gap_px": 0.228
+      },
+      "Middle": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 207,
+       "gap_px": 0.004,
+       "nearest_part": "octagon",
+       "tip_gap_px": 0.21
+      },
+      "Ring": {
+       "penetration_px": 0.052,
+       "inside_vertices": 1,
+       "vertices": 178,
+       "gap_px": 0.0,
+       "nearest_part": "octagon",
+       "tip_gap_px": 0.16
+      },
+      "Little": {
+       "penetration_px": 0.067,
+       "inside_vertices": 8,
+       "vertices": 202,
+       "gap_px": 0.0,
+       "nearest_part": "bone",
+       "tip_gap_px": 0.446
+      }
+     },
+     "palm": {
+      "penetration_px": 0.086,
+      "inside_vertices": 37,
+      "vertices": 227,
+      "gap_px": 0.0,
+      "nearest_part": "bone"
+     },
+     "forearm": {
+      "penetration_px": 0.0,
+      "inside_vertices": 0,
+      "vertices": 10270,
+      "gap_px": 0.536,
+      "nearest_part": "upper"
+     },
+     "grip": {
+      "parts": [
+       "barrel2",
+       "bone",
+       "octagon"
+      ],
+      "boxes": 54,
+      "palm_to_axis_px": 1.697,
+      "knuckle_line_vs_axis_deg": 28.39,
+      "finger_dir_vs_axis_deg": 52.51,
+      "palm_surface_gap_px": 0.425,
+      "thumb_opposition_deg": 163.69
+     },
+     "thumb": {
+      "tip_gap_px": 0.781,
+      "tip_to_index_tip_px": 4.909,
+      "tip_to_palm_px": 2.902
+     },
+     "wrist": {
+      "flexion_deg": 30.09,
+      "deviation_deg": -29.35,
+      "twist_deg": -78.31,
+      "limit_violations_deg": {}
+     }
+    },
+    "Right": {
+     "palm_center_view_px": [
+      5.637,
+      -7.249,
+      -7.09
+     ],
+     "fingers": {
+      "Thumb": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 186,
+       "gap_px": 0.1,
+       "nearest_part": "grip",
+       "tip_gap_px": 0.371
+      },
+      "Index": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 203,
+       "gap_px": 0.565,
+       "nearest_part": "upper",
+       "tip_gap_px": 0.613
+      },
+      "Middle": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 207,
+       "gap_px": 0.101,
+       "nearest_part": "grip",
+       "tip_gap_px": 0.5
+      },
+      "Ring": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 178,
+       "gap_px": 0.101,
+       "nearest_part": "grip",
+       "tip_gap_px": 0.331
+      },
+      "Little": {
+       "penetration_px": 0.0,
+       "inside_vertices": 0,
+       "vertices": 202,
+       "gap_px": 0.101,
+       "nearest_part": "grip",
+       "tip_gap_px": 0.487
+      }
+     },
+     "palm": {
+      "penetration_px": 0.0,
+      "inside_vertices": 0,
+      "vertices": 225,
+      "gap_px": 0.499,
+      "nearest_part": "grip"
+     },
+     "forearm": {
+      "penetration_px": 0.0,
+      "inside_vertices": 0,
+      "vertices": 5945,
+      "gap_px": 1.611,
+      "nearest_part": "AR"
+     },
+     "grip": {
+      "parts": [
+       "grip",
+       "upper"
+      ],
+      "boxes": 13,
+      "palm_to_axis_px": 2.333,
+      "knuckle_line_vs_axis_deg": 23.75,
+      "finger_dir_vs_axis_deg": 87.63,
+      "palm_surface_gap_px": 1.414,
+      "thumb_opposition_deg": 62.63
+     },
+     "thumb": {
+      "tip_gap_px": 0.371,
+      "tip_to_index_tip_px": 1.999,
+      "tip_to_palm_px": 3.275
+     },
+     "wrist": {
+      "flexion_deg": -9.0,
+      "deviation_deg": -39.08,
+      "twist_deg": 3.17,
+      "limit_violations_deg": {
+       "deviation": -9.08
+      }
+     }
+    }
+   },
+   "collisions": {
+    "hand_hand_min_px": 10.988,
+    "arm_arm_min_px": 10.239,
+    "hand_gun_inside_vertices": {
+     "Left": 55,
+     "Right": 0
+    },
+    "forearm_gun_inside_vertices": {
+     "Left": 0,
+     "Right": 0
+    }
+   }
+  }
+ }
+}

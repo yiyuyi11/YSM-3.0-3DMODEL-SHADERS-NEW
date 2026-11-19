@@ -1,0 +1,50 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "MIT"
+issueTrackerURL = ""
+displayURL = ""
+
+[[mods]]
+modId = "battlefield_movement"
+version = "1.7.24"
+displayName = "战地机动 · Battlefield Movement"
+authors = "Battlefield Movement"
+description = '''滑铲 / 飞扑 / 战术趴地，趴地动作直接移植 Tacz Animation Additions 1.2.12。
+趴地使用原 mod 的 37 个角度姿态与进入/退出关键帧：趴着转动视角会像战地 5 一样侧翻、仰躺。
+独立键位：Z 趴下/起身（冲刺时飞扑），左 Alt 直接滑铲；冲刺时按潜行键也可滑铲。
+Forge 1.20.1 移植版（TaCZ 1.2.0 / PlayerAnimator 1.0.2）。'''
+
+[[dependencies.battlefield_movement]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.battlefield_movement]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.20.2)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.battlefield_movement]]
+modId = "playeranimator"
+mandatory = false
+versionRange = "[1.0.2-rc1+1.20,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.battlefield_movement]]
+modId = "tacz"
+mandatory = false
+versionRange = "[1.2.0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.battlefield_movement]]
+modId = "battlefield_ops"
+mandatory = false
+versionRange = "[0.8.0,)"
+ordering = "AFTER"
+side = "BOTH"

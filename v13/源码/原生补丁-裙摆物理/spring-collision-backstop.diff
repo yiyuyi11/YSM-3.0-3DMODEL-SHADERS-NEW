@@ -1,0 +1,297 @@
+--- a/modules/gfx/src/renderer/spring_physics.cc
++++ b/modules/gfx/src/renderer/spring_physics.cc
+@@ -10,10 +10,11 @@
+ 
+ // Spring bones follow the VRM SpringBone model: each joint keeps its tail's
+ // current and previous position, integrates inertia, stiffness toward the
+-// animated direction and gravity, keeps the bone length, is pushed out of the
+-// chain's colliders, then rotates the joint's subtree about its pivot so the
+-// bone points at the tail. Joints run in baked order, so a parent's rotation
+-// is in place before its children step.
++// animated direction and gravity, keeps the bone length, keeps the tail and the
++// bone out of the chain's colliders on the side the animation puts them, then
++// rotates the joint's subtree about its pivot so the bone points at the tail.
++// Joints run in baked order, so a parent's rotation is in place before its
++// children step.
+ namespace ysm::gfx::renderer {
+ namespace {
+ constexpr float kModelUnit = 1.0f / 16.0f;
+@@ -39,7 +40,8 @@
+ // stays world-relative, so turning still swings.
+ constexpr float kAirDrag = 0.15f;
+ // A tail pushed out of one collider can land inside another (hair on a
+-// shoulder and a backpack); passes repeat until none overlaps, up to this many.
++// shoulder and a backpack), and turning a bone out of one collider can move
++// its tail into another; passes repeat until none overlaps, up to this many.
+ constexpr int kCollisionPasses = 3;
+ // Share of the sliding motion a contact removes. Contacts also drop the
+ // motion along the contact normal, so a tail lying on a moving body part
+@@ -47,6 +49,9 @@
+ // carrying the push-out into the next step.
+ constexpr float kContactFriction = 0.4f;
+ constexpr float kEpsilon = 1e-6f;
++// Bone contacts this close to the joint's head are left to the tail test:
++// turning about the head barely moves them.
++constexpr float kMinBoneContactShare = 1e-3f;
+ 
+ using Vec3 = std::array<float, 3>;
+ 
+@@ -134,6 +139,63 @@
+     return Add(a, Scale(ab, t));
+ }
+ 
++Vec3 Lerp(const Vec3& a, const Vec3& b, float share) {
++    return Add(a, Scale(Sub(b, a), share));
++}
++
++// Shares along [p0, p1] and [q0, q1] of their closest points.
++struct SegmentShares {
++    float p;
++    float q;
++};
++
++SegmentShares ClosestBetweenSegments(const Vec3& p0, const Vec3& p1,
++                                     const Vec3& q0, const Vec3& q1) {
++    const auto dp = Sub(p1, p0);
++    const auto dq = Sub(q1, q0);
++    const auto r = Sub(p0, q0);
++    const auto pp = Dot(dp, dp);
++    const auto qq = Dot(dq, dq);
++    const auto qr = Dot(dq, r);
++    constexpr auto kDegenerate = kEpsilon * kEpsilon;
++    if (pp <= kDegenerate) {
++        return {0.0f, qq <= kDegenerate ? 0.0f : std::clamp(qr / qq, 0.0f, 1.0f)};
++    }
++    const auto pr = Dot(dp, r);
++    if (qq <= kDegenerate) {
++        return {std::clamp(-pr / pp, 0.0f, 1.0f), 0.0f};
++    }
++    const auto pq = Dot(dp, dq);
++    const auto denominator = pp * qq - pq * pq;
++    // Parallel segments: any point of the overlap will do; start at p0.
++    auto s = denominator > kEpsilon * pp * qq
++                 ? std::clamp((pq * qr - pr * qq) / denominator, 0.0f, 1.0f)
++                 : 0.0f;
++    auto t = (pq * s + qr) / qq;
++    if (t < 0.0f) {
++        t = 0.0f;
++        s = std::clamp(-pr / pp, 0.0f, 1.0f);
++    } else if (t > 1.0f) {
++        t = 1.0f;
++        s = std::clamp((pq - pr) / pp, 0.0f, 1.0f);
++    }
++    return {s, t};
++}
++
++// Push-out direction for a point overlapping a collider, offset from its
++// closest point on the collider's axis. The animated pose's offset from the
++// axis decides the side: a tail or bone that crossed the collider (a fast
++// swing, a teleport) goes back out on the side the animation puts it instead
++// of staying trapped on the far side.
++Vec3 PushNormal(const Vec3& offset, const Vec3& animated_offset,
++                const Vec3& fallback) {
++    const auto length = Length(offset);
++    if (length > kEpsilon && Dot(offset, animated_offset) >= 0.0f) {
++        return Scale(offset, 1.0f / length);
++    }
++    return Normalize(animated_offset, Normalize(offset, fallback));
++}
++
+ // A pose a share of the way from one animated pose to the next. The bone's
+ // pivot travels in a straight line and each basis column turns and scales
+ // between its two ends, so an intermediate pose neither shrinks nor swings
+@@ -351,6 +413,8 @@
+ 
+         const auto first = springs.chain_offsets[joint.chain];
+         const auto last = springs.chain_offsets[joint.chain + 1];
++        const auto animated_tail =
++            Add(animated.head, Scale(animated.direction, animated.length));
+         Vec3 contact_normal{};
+         bool contact = false;
+         for (int pass = 0; pass < kCollisionPasses; ++pass) {
+@@ -362,18 +426,57 @@
+                     continue;
+                 }
+                 const auto& collider_pose = bone_poses_[collider.bone].pose;
+-                const auto closest = ClosestOnSegment(
+-                    next, TransformPoint(collider_pose, collider.head),
+-                    TransformPoint(collider_pose, collider.tail));
+-                const auto offset = Sub(next, closest);
+-                const auto distance = Length(offset);
++                const auto axis_head =
++                    TransformPoint(collider_pose, collider.head);
++                const auto axis_tail =
++                    TransformPoint(collider_pose, collider.tail);
+                 const auto reach = collider.radius + joint.hit_radius;
+-                if (distance < reach) {
+-                    const auto normal = Normalize(offset, animated.direction);
++                const auto closest = ClosestOnSegment(next, axis_head, axis_tail);
++                const auto offset = Sub(next, closest);
++                if (Length(offset) < reach) {
++                    const auto normal = PushNormal(
++                        offset,
++                        Sub(animated_tail, ClosestOnSegment(animated_tail,
++                                                            axis_head, axis_tail)),
++                        animated.direction);
+                     next = Add(closest, Scale(normal, reach));
+                     contact_normal = Add(contact_normal, normal);
+                     contact = pushed = true;
+                 }
++                // The bone between head and tail. Turning about the head can
++                // only clear it when the head itself is outside.
++                if (Length(Sub(animated.head,
++                               ClosestOnSegment(animated.head, axis_head,
++                                                axis_tail))) < reach) {
++                    continue;
++                }
++                const auto bone = ClosestBetweenSegments(animated.head, next,
++                                                         axis_head, axis_tail);
++                if (bone.p <= kMinBoneContactShare || bone.p >= 1.0f) {
++                    continue;
++                }
++                const auto on_axis = Lerp(axis_head, axis_tail, bone.q);
++                const auto bone_offset =
++                    Sub(Lerp(animated.head, next, bone.p), on_axis);
++                if (Length(bone_offset) >= reach) {
++                    continue;
++                }
++                const auto rest = ClosestBetweenSegments(
++                    animated.head, animated_tail, axis_head, axis_tail);
++                const auto normal = PushNormal(
++                    bone_offset,
++                    Sub(Lerp(animated.head, animated_tail, rest.p),
++                        Lerp(axis_head, axis_tail, rest.q)),
++                    animated.direction);
++                // Turn the bone about its head through the contact point
++                // moved out to the surface.
++                const auto cleared = Add(on_axis, Scale(normal, reach));
++                next = Add(animated.head,
++                           Scale(Normalize(Sub(cleared, animated.head),
++                                           animated.direction),
++                                 Length(Sub(next, animated.head))));
++                contact_normal = Add(contact_normal, normal);
++                contact = pushed = true;
+             }
+             next = Add(animated.head,
+                        Scale(Normalize(Sub(next, animated.head),
+--- a/modules/test/src/spring_physics_test.cc
++++ b/modules/test/src/spring_physics_test.cc
+@@ -23,9 +23,10 @@
+ constexpr simd::Tag<simd::Type::kNone> kGenericTag;
+ constexpr float kFrame = 1.0f / 60.0f;
+ 
+-// "root" at the origin; "hair" pivots 2 blocks up and points +X one block to
+-// its rest tail; "tip" hangs off the hair's end and must follow it.
+-model_proto::GeoModel MakeHair(float stiffness, float gravity_power) {
++// "root" at the origin; "hair" pivots 2 blocks up and points +X length blocks
++// to its rest tail; "tip" hangs off the hair's end and must follow it.
++model_proto::GeoModel MakeHair(float stiffness, float gravity_power,
++                               float length = 1.0f) {
+     model_proto::GeoModel model;
+     model.bones.resize(3);
+     model.bones[0].name = "root";
+@@ -37,12 +38,12 @@
+     model.bones[1].rotate = {0, 0, 0};
+     model.bones[2].name = "tip";
+     model.bones[2].parent = "hair";
+-    model.bones[2].pivot = {16, 32, 0};
++    model.bones[2].pivot = {16 * length, 32, 0};
+     model.bones[2].rotate = {0, 0, 0};
+     auto& springs = model.springs.emplace();
+     springs.chains.resize(1);
+     springs.joints.push_back(model_proto::SpringJoint(
+-        1, {1, 2, 0}, 0.0f, stiffness, 0.4f, gravity_power, {0, -1, 0}, 0));
++        1, {length, 2, 0}, 0.0f, stiffness, 0.4f, gravity_power, {0, -1, 0}, 0));
+     return model;
+ }
+ 
+@@ -102,6 +103,11 @@
+         return Transform(state_.PoseView().bone_poses[baked_index].pose, rest);
+     }
+ 
++    // Animation input by original bone index, applied from the next step.
++    gfx::renderer::BoneAttribute& Attribute(size_t original_bone) {
++        return attributes_[original_bone];
++    }
++
+     const std::shared_ptr<gfx::bake::BakedModel>& Baked() const { return baked_; }
+ 
+    private:
+@@ -248,6 +254,77 @@
+     EXPECT_LT(tail[1], 1.5f);
+ }
+ 
++TEST(SpringPhysicsTest, BackstopReturnsATrappedTailToTheAnimatedSide) {
++    InitCpuInfo();
++    auto model = MakeHair(1.0f, 0.0f);
++    auto& springs = *model.springs;
++    // A bar along Z lying on the tail's swing circle just below the rest tail
++    // (1, 2, 0); it reaches 0.15 with the tail's hit radius.
++    springs.colliders.push_back(model_proto::SpringCollider(
++        0, {0.95f, 1.7f, -1}, {0.95f, 1.7f, 1}, 0.1f));
++    springs.chains[0].colliders = {0};
++    springs.joints[0].hit_radius = 0.05f;
++    SpringHarness harness(model);
++    // The tail is seeded with the hair animated pointing down, then the
++    // animation snaps back to +X: the tail swings up into the bar from below,
++    // the far side from the animated tail, and can't pass along the circle.
++    harness.Attribute(1).rotation[2] = -GLM_PI_2f;
++    harness.Run(1, Frame());
++    ExpectNear(harness.Posed(1, {1, 2, 0}), {0, 1, 0}, 1e-4f);
++    harness.Attribute(1).rotation[2] = 0.0f;
++
++    int recovered = -1;
++    for (int i = 0; i < 240; ++i) {
++        harness.Run(1, Frame());
++        const auto tail = harness.Posed(1, {1, 2, 0});
++        const auto dx = tail[0] - 0.95f;
++        const auto dy = tail[1] - 1.7f;
++        // The animated tail sits (0.05, 0.3) off the bar's axis.
++        const bool animated_side = dx * 0.05f + dy * 0.3f > 0.0f;
++        const bool outside = std::hypot(dx, dy) >= 0.149f;
++        if (recovered < 0) {
++            if (animated_side && outside) {
++                recovered = i;
++            }
++            continue;
++        }
++        EXPECT_TRUE(animated_side && outside) << "frame " << i;
++    }
++    EXPECT_GE(recovered, 0);
++    EXPECT_LE(recovered, 60);
++    ExpectNear(harness.Posed(1, {1, 2, 0}), {1, 2, 0}, 0.02f);
++}
++
++TEST(SpringPhysicsTest, TheBoneCannotPassThroughACollider) {
++    InitCpuInfo();
++    // A two-block hair whose middle crosses a bar along Z 0.1 below it, which
++    // reaches 0.25 with the hit radius; the tail is a block clear of the bar.
++    auto model = MakeHair(1.0f, 0.0f, 2.0f);
++    auto& springs = *model.springs;
++    springs.colliders.push_back(model_proto::SpringCollider(
++        0, {1, 1.9f, -1}, {1, 1.9f, 1}, 0.2f));
++    springs.chains[0].colliders = {0};
++    springs.joints[0].hit_radius = 0.05f;
++    SpringHarness harness(model);
++    harness.Run(300, Frame());
++
++    const auto head = harness.Posed(1, {0, 2, 0});
++    const auto tail = harness.Posed(1, {2, 2, 0});
++    float closest = 1e9f;
++    for (int i = 0; i <= 400; ++i) {
++        const auto share = static_cast<float>(i) / 400.0f;
++        closest = std::min(closest,
++                           std::hypot(head[0] + (tail[0] - head[0]) * share - 1.0f,
++                                      head[1] + (tail[1] - head[1]) * share - 1.9f));
++    }
++    EXPECT_GE(closest, 0.248f);
++    // Turned up to the side of the bar the animated bone lies on, at its
++    // length.
++    EXPECT_GT(tail[1], 2.0f);
++    EXPECT_NEAR(std::hypot(tail[0] - head[0], tail[1] - head[1], tail[2] - head[2]),
++                2.0f, 1e-3f);
++}
++
+ TEST(SpringPhysicsTest, SpringsSurviveTheBakedCacheAndRejectBadBones) {
+     InitCpuInfo();
+     auto model = MakeHair(1.0f, 0.5f);

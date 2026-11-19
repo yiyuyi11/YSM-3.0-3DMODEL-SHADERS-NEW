@@ -1,0 +1,186 @@
+{
+ "tacz:m4a1": {
+  "aurora": {
+   "solve_s": 92.4,
+   "per_model_grip": true,
+   "idle": {
+    "before": {
+     "pen_px": 1.16,
+     "inside": 620,
+     "gap_px": 0.0
+    },
+    "after": {
+     "pen_px": 0.0,
+     "inside": 0,
+     "gap_px": 0.725
+    }
+   },
+   "reload_tactical": {
+    "before": {
+     "pen_px": 1.266,
+     "inside": 773,
+     "gap_px": 3.58
+    },
+    "after": {
+     "pen_px": 0.501,
+     "inside": 127,
+     "gap_px": 3.796
+    },
+    "frames": 37
+   },
+   "total_s": 160.6
+  },
+  "aglina": {
+   "solve_s": 122.1,
+   "per_model_grip": false,
+   "idle": {
+    "before": {
+     "pen_px": 1.048,
+     "inside": 606,
+     "gap_px": 0.039
+    },
+    "after": {
+     "pen_px": 0.0,
+     "inside": 0,
+     "gap_px": 0.101
+    }
+   },
+   "reload_tactical": {
+    "before": {
+     "pen_px": 1.255,
+     "inside": 722,
+     "gap_px": 4.256
+    },
+    "after": {
+     "pen_px": 0.5,
+     "inside": 147,
+     "gap_px": 3.626
+    },
+    "frames": 37
+   },
+   "total_s": 199.7
+  },
+  "pelica": {
+   "solve_s": 97.1,
+   "per_model_grip": false,
+   "idle": {
+    "before": {
+     "pen_px": 1.062,
+     "inside": 677,
+     "gap_px": 0.0
+    },
+    "after": {
+     "pen_px": 0.0,
+     "inside": 0,
+     "gap_px": 0.102
+    }
+   },
+   "reload_tactical": {
+    "before": {
+     "pen_px": 1.272,
+     "inside": 830,
+     "gap_px": 3.763
+    },
+    "after": {
+     "pen_px": 0.502,
+     "inside": 168,
+     "gap_px": 3.67
+    },
+    "frames": 37
+   },
+   "total_s": 216.9
+  }
+ },
+ "tacz:ak47": {
+  "aglina": {
+   "solve_s": 84.8,
+   "per_model_grip": false,
+   "idle": {
+    "before": {
+     "pen_px": 0.974,
+     "inside": 418,
+     "gap_px": 0.609
+    },
+    "after": {
+     "pen_px": 0.192,
+     "inside": 17,
+     "gap_px": 0.715
+    }
+   },
+   "reload_tactical": {
+    "before": {
+     "pen_px": 0.986,
+     "inside": 479,
+     "gap_px": 2.062
+    },
+    "after": {
+     "pen_px": 0.625,
+     "inside": 153,
+     "gap_px": 1.87
+    },
+    "frames": 37
+   },
+   "total_s": 123.1
+  },
+  "aurora": {
+   "solve_s": 88.5,
+   "per_model_grip": true,
+   "idle": {
+    "before": {
+     "pen_px": 0.99,
+     "inside": 338,
+     "gap_px": 0.719
+    },
+    "after": {
+     "pen_px": 0.411,
+     "inside": 14,
+     "gap_px": 0.979
+    }
+   },
+   "reload_tactical": {
+    "before": {
+     "pen_px": 1.0,
+     "inside": 446,
+     "gap_px": 1.815
+    },
+    "after": {
+     "pen_px": 0.625,
+     "inside": 106,
+     "gap_px": 2.593
+    },
+    "frames": 37
+   },
+   "total_s": 123.6
+  },
+  "pelica": {
+   "solve_s": 78.8,
+   "per_model_grip": false,
+   "idle": {
+    "before": {
+     "pen_px": 0.97,
+     "inside": 463,
+     "gap_px": 0.782
+    },
+    "after": {
+     "pen_px": 0.193,
+     "inside": 9,
+     "gap_px": 0.953
+    }
+   },
+   "reload_tactical": {
+    "before": {
+     "pen_px": 1.0,
+     "inside": 548,
+     "gap_px": 1.986
+    },
+    "after": {
+     "pen_px": 0.625,
+     "inside": 190,
+     "gap_px": 1.817
+    },
+    "frames": 37
+   },
+   "total_s": 134.6
+  }
+ }
+}

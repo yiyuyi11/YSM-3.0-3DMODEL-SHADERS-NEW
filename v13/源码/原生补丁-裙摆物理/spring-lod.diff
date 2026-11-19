@@ -1,0 +1,379 @@
+--- a/modules/gfx/src/renderer/spring_physics.cc
++++ b/modules/gfx/src/renderer/spring_physics.cc
+@@ -302,6 +302,43 @@
+     }
+     return direction;
+ }
++
++uint64_t HashBytes(uint64_t hash, const void* data, size_t size) {
++    const auto* bytes = static_cast<const unsigned char*>(data);
++    for (size_t i = 0; i < size; ++i) {
++        hash = (hash ^ bytes[i]) * 0x100000001B3ULL;  // FNV-1a
++    }
++    return hash;
++}
++
++template <typename T>
++uint64_t HashVector(uint64_t hash, const std::vector<T>& values) {
++    static_assert(std::is_trivially_copyable_v<T>);
++    const uint64_t size = values.size();
++    hash = HashBytes(hash, &size, sizeof(size));
++    return HashBytes(hash, values.data(), values.size() * sizeof(T));
++}
++
++// The spring table and the bone tree it runs on. Two baked models with the
++// same fingerprint (the mesh LOD levels of one geometry differ only in their
++// triangles) can swap under a ModelState without restarting its springs.
++uint64_t SpringFingerprint(const bake::BakedModel& model) {
++    const auto& springs = model.Springs();
++    auto hash = 0xCBF29CE484222325ULL;
++    hash = HashVector(hash, springs.joints);
++    hash = HashVector(hash, springs.colliders);
++    hash = HashVector(hash, springs.chain_offsets);
++    hash = HashVector(hash, springs.chain_colliders);
++    hash = HashVector(hash, springs.chain_centers);
++    const auto& bones = model.Bones().list;
++    const uint64_t bone_count = bones.size();
++    hash = HashBytes(hash, &bone_count, sizeof(bone_count));
++    for (const auto& bone : bones) {
++        hash = HashBytes(hash, bone.pivot.data(), sizeof(bone.pivot));
++        hash = HashBytes(hash, &bone.subtree_end, sizeof(bone.subtree_end));
++    }
++    return hash;
++}
+ }  // namespace
+ 
+ PhysicsFrame PhysicsFrame::Unpack(std::span<const float, kFloatCount> packed) {
+@@ -331,11 +368,43 @@
+     const bool motion_finite = std::all_of(
+         &frame.motion[0][0], &frame.motion[0][0] + 16,
+         [](float value) { return std::isfinite(value); });
+-    bool reset = frame.reset || spring_model_ != baked_model_.get() ||
++    // Another baked model with the same springs and bones (a mesh LOD level)
++    // continues them; anything else restarts them.
++    bool same_springs = spring_model_ == baked_model_.get();
++    if (!same_springs) {
++        const auto fingerprint = SpringFingerprint(*baked_model_);
++        same_springs =
++            spring_model_ != nullptr && fingerprint == spring_fingerprint_;
++        spring_fingerprint_ = fingerprint;
++        spring_read_bones_.clear();
++    }
++    bool reset = frame.reset || !same_springs ||
+                  spring_tails_.size() != joints.size() || !motion_finite ||
+                  !std::isfinite(dt) || dt < 0.0f;
+     dt = reset ? 0.0f : std::min(dt, kMaxStepSeconds);
+     spring_model_ = baked_model_.get();
++    if (spring_read_bones_.empty()) {
++        // Bones a fixed step reads: joint pivots and limit frames, collider
++        // bones, centers. aim() also writes the joints' other descendants,
++        // but nothing reads those before the final restore.
++        std::vector<uint8_t> read(bones.size(), 0);
++        for (const auto& joint : joints) {
++            read[joint.bone] = 1;
++        }
++        for (const auto& collider : colliders) {
++            read[collider.bone] = 1;
++        }
++        for (const auto center : springs.chain_centers) {
++            if (center != 0) {
++                read[center - 1] = 1;
++            }
++        }
++        for (uint32_t bone = 0; bone < read.size(); ++bone) {
++            if (read[bone] != 0) {
++                spring_read_bones_.push_back(bone);
++            }
++        }
++    }
+     auto& velocity_estimate = spring_body_velocity_;
+     if (reset) {
+         spring_tails_.assign(joints.size(), SpringTail{});
+@@ -696,14 +765,23 @@
+     // out on the far side, and the travel throws every tail back by the
+     // frame's distance before the bone length is restored.
+     spring_animated_poses_.assign(bone_poses_.begin(), bone_poses_.end());
++    // Spring LOD: the joint's chain is held (SetSpringModes).
++    const auto held = [&](size_t index) {
++        const auto chain = joints[index].chain;
++        return chain < spring_chain_modes_.size() &&
++               spring_chain_modes_[chain] != 0;
++    };
+     const bool blend = !reset && steps > 1 &&
+                        spring_previous_poses_.size() == bone_poses_.size() &&
+                        spring_previous_visited_.size() == bone_visited_.size();
++    // Only the bones a step reads are blended and restored (the rest is
++    // restored once after the steps): the same result for a fraction of the
++    // bones (Pelica: 69 of 294).
+     for (int step = 0; step < steps; ++step) {
+         if (blend) {
+             const auto share =
+                 static_cast<float>(step + 1) / static_cast<float>(steps);
+-            for (size_t bone = 0; bone < bone_poses_.size(); ++bone) {
++            for (const auto bone : spring_read_bones_) {
+                 bone_poses_[bone] = spring_animated_poses_[bone];
+                 if (bone_visited_[bone] == 0 ||
+                     spring_previous_visited_[bone] == 0) {
+@@ -717,8 +795,9 @@
+                           share, bone_poses_[bone].pose);
+             }
+         } else if (step > 0) {
+-            std::copy(spring_animated_poses_.begin(),
+-                      spring_animated_poses_.end(), bone_poses_.begin());
++            for (const auto bone : spring_read_bones_) {
++                bone_poses_[bone] = spring_animated_poses_[bone];
++            }
+         }
+         // Chains with a center: the center bone's motion over this step
+         // carries their tails, so only motion relative to it swings them.
+@@ -753,6 +832,9 @@
+             }
+         }
+         for (size_t index = 0; index < joints.size(); ++index) {
++            if (spring_tails_[index].holding && held(index)) {
++                continue;  // HOLD: placed once per extraction, below
++            }
+             Animated animated;
+             if (!begin(index, animated)) {
+                 continue;
+@@ -793,12 +875,33 @@
+         std::clamp(spring_accumulator_ / kFixedStepSeconds, 0.0f, 1.0f);
+     for (size_t index = 0; index < joints.size(); ++index) {
+         Animated animated;
++        auto& tail = spring_tails_[index];
+         if (!begin(index, animated)) {
++            tail.holding = false;
+             continue;
+         }
+-        const auto& tail = spring_tails_[index];
+-        aim(joints[index], animated,
+-            Add(tail.previous, Scale(Sub(tail.current, tail.previous), alpha)));
++        auto target =
++            Add(tail.previous, Scale(Sub(tail.current, tail.previous), alpha));
++        if (held(index)) {
++            // HOLD keeps the tail in the joint's animated frame: entered at
++            // the drawn position, so neither entering nor leaving moves it;
++            // leaving starts the integration at rest from the held tail.
++            auto& pose = bone_poses_[joints[index].bone].pose;
++            if (!tail.holding) {
++                mat4 frame_pose;
++                mat4 inverse;
++                glm_mat4_copy(pose, frame_pose);
++                glm_mat4_inv(frame_pose, inverse);
++                tail.held = TransformPoint(inverse, target);
++                tail.holding = true;
++            } else {
++                target = TransformPoint(pose, tail.held);
++            }
++            tail.current = tail.previous = target;
++        } else {
++            tail.holding = false;
++        }
++        aim(joints[index], animated, target);
+     }
+     // This extraction's animated poses start the next one's blend.
+     std::swap(spring_previous_poses_, spring_animated_poses_);
+--- a/modules/gfx/include/gfx/renderer/model_state.h
++++ b/modules/gfx/include/gfx/renderer/model_state.h
+@@ -125,6 +125,15 @@
+         return morphs_active_;
+     }
+ 
++    // Spring LOD: per spring chain, 0 simulates it (FULL), 1 holds it
++    // (HOLD): from the next extraction the chain keeps the shape it had then,
++    // in its joints' animated frames, with no integration or collision; on
++    // return to FULL it starts at rest from where it was held. Chains past
++    // the span are FULL. Neither change moves a tail.
++    void SetSpringModes(std::span<const uint8_t> modes) {
++        spring_chain_modes_.assign(modes.begin(), modes.end());
++    }
++
+    private:
+     template <typename SimdTag>
+     struct Extraction;
+@@ -134,6 +143,9 @@
+         std::array<float, 3> previous{};
+         // False until seeded from the animated pose.
+         bool live = false;
++        // HOLD: the tail in the joint bone's animated frame, set on entry.
++        std::array<float, 3> held{};
++        bool holding = false;
+     };
+ 
+     // A chain's center bone (VRM spring center) across fixed steps.
+@@ -176,6 +188,14 @@
+     // after the latest fixed step and the one before it.
+     std::vector<SpringTail> spring_tails_;
+     const bake::BakedModel* spring_model_ = nullptr;
++    // Spring table and bone tree of spring_model_ (SpringFingerprint): a new
++    // baked model with the same one (a mesh LOD level of the same geometry)
++    // keeps the springs going instead of restarting them.
++    uint64_t spring_fingerprint_ = 0;
++    // Bones the fixed steps read (joints, colliders, centers): only these
++    // are blended and restored per step.
++    std::vector<uint32_t> spring_read_bones_;
++    std::vector<uint8_t> spring_chain_modes_;
+     // Seconds received but not yet integrated, below one fixed step.
+     float spring_accumulator_ = 0.0f;
+     // Body velocity in model units per second, smoothed across extractions.
+--- a/modules/lib-jni/src/render/model_state.cc
++++ b/modules/lib-jni/src/render/model_state.cc
+@@ -2,6 +2,7 @@
+ #include <cstdint>
+ #include <optional>
+ #include <span>
++#include <vector>
+ 
+ #include <bitpack.h>
+ #include <java/array.h>
+@@ -156,4 +157,26 @@
+                          nullptr, locator_bone_indices_array, output_array,
+                          root_index);
+ }
++
++// Spring LOD: per chain 0 FULL, 1 HOLD (ModelState::SetSpringModes); null
++// makes every chain FULL.
++YSM_JNI_ENTRY(
++    "Lcom/elfmcys/ysm/natives/render/NativeModelState;nSetSpringModes(J[B)V",
++    (state_ptr, modes_array)) {
++    YSM_DECLARE_OR_RETURN(
++        state, java::CastOpaquePtr<gfx::renderer::ModelState>(state_ptr));
++    YSM_ASSERT(env != nullptr,
++               absl::InvalidArgumentError("Invalid JNI environment."));
++    std::vector<uint8_t> modes;
++    if (modes_array != nullptr) {
++        modes.resize(static_cast<size_t>(env->GetArrayLength(modes_array)));
++        env->GetByteArrayRegion(modes_array, 0,
++                                static_cast<jsize>(modes.size()),
++                                reinterpret_cast<jbyte*>(modes.data()));
++        YSM_ASSERT(!env->ExceptionCheck(),
++                   absl::InternalError("Failed to read the spring modes."));
++    }
++    state->SetSpringModes(modes);
++    return OkStatus();
++}
+ }  // namespace ysm::lib::render
+--- a/modules/test/src/spring_physics_test.cc
++++ b/modules/test/src/spring_physics_test.cc
+@@ -81,12 +81,22 @@
+         : baked_(Bake(model)), attributes_(IdentityAttributes(model.bones.size())) {}
+ 
+     bool Step(const gfx::renderer::PhysicsFrame* frame) {
+-        auto extracted = state_.Extract(kGenericTag, baked_, attributes_,
++        return StepModel(baked_, frame);
++    }
++
++    // One extraction with another baked model (a mesh LOD level).
++    bool StepModel(const std::shared_ptr<gfx::bake::BakedModel>& baked,
++                   const gfx::renderer::PhysicsFrame* frame) {
++        auto extracted = state_.Extract(kGenericTag, baked, attributes_,
+                                         attributes_.size(), frame);
+         EXPECT_TRUE(extracted.ok()) << extracted.status();
+         return extracted.ok();
+     }
+ 
++    void SetSpringModes(std::vector<uint8_t> modes) {
++        state_.SetSpringModes(modes);
++    }
++
+     void Run(int frames, const gfx::renderer::PhysicsFrame& frame) {
+         for (int i = 0; i < frames; ++i) {
+             ASSERT_TRUE(Step(&frame));
+@@ -613,5 +623,97 @@
+                 path, springs.joints.size(), springs.colliders.size(),
+                 springs.chain_colliders.size(), seconds * 1000.0 / 600.0);
+ }
++
++bool SameBits(const Vec3& a, const Vec3& b) {
++    return std::memcmp(a.data(), b.data(), sizeof(Vec3)) == 0;
++}
++
++TEST(SpringPhysicsTest, ALevelSwapKeepsTheSprings) {
++    InitCpuInfo();
++    // Mesh LOD: every extraction may hand another baked model with the same
++    // bones and spring table. The springs must go on exactly as without the
++    // swaps; a model with another spring table still restarts them.
++    const auto hair = MakeHair(1.0f, 2.0f);
++    SpringHarness steady(hair);
++    SpringHarness swapped(hair);
++    const auto level = Bake(hair);
++    ASSERT_NE(level, nullptr);
++    ASSERT_NE(level.get(), swapped.Baked().get());
++    for (int i = 0; i < 90; ++i) {
++        auto walk = Frame(i % 3 == 0 ? 3.0f * kFrame : kFrame);
++        vec3 shift{0.0f, 0.0f, i < 45 ? 4.3f * kFrame : 0.0f};
++        glm_translate_make(walk.motion, shift);
++        ASSERT_TRUE(steady.Step(&walk));
++        ASSERT_TRUE(i % 2 == 0 ? swapped.StepModel(level, &walk)
++                               : swapped.Step(&walk));
++        ASSERT_TRUE(SameBits(steady.Posed(1, {1, 2, 0}), swapped.Posed(1, {1, 2, 0})))
++            << "frame " << i;
++        ASSERT_TRUE(SameBits(steady.Posed(2, {1, 2, 0}), swapped.Posed(2, {1, 2, 0})))
++            << "frame " << i;
++    }
++    // Mid-swing, a model whose spring differs restarts at the animated pose.
++    const auto stiffer = Bake(MakeHair(2.0f, 2.0f));
++    ASSERT_GT(std::abs(swapped.Posed(1, {1, 2, 0})[1] - 2.0f), 0.05f);
++    ASSERT_TRUE(swapped.StepModel(stiffer, nullptr));
++    auto still = Frame(0.0f);
++    ASSERT_TRUE(swapped.StepModel(stiffer, &still));
++    ExpectNear(swapped.Posed(1, {1, 2, 0}), {1, 2, 0}, 1e-5f);
++}
++
++TEST(SpringPhysicsTest, HoldKeepsTheShapeAndNeitherEntryNorExitJumps) {
++    InitCpuInfo();
++    // Spring LOD: HOLD freezes a chain's shape in its bones' frames. Entering
++    // draws where FULL would have; held, body motion and gravity no longer
++    // move it; leaving resumes from the held tail at rest.
++    SpringHarness full(MakeHair(0.0f, 2.0f));
++    SpringHarness hold(MakeHair(0.0f, 2.0f));
++    full.Run(4, Frame());
++    hold.Run(4, Frame());
++    hold.SetSpringModes({1});
++    const auto frame = Frame();
++    ASSERT_TRUE(full.Step(&frame));
++    ASSERT_TRUE(hold.Step(&frame));
++    const auto entered = hold.Posed(1, {1, 2, 0});
++    ASSERT_TRUE(SameBits(entered, full.Posed(1, {1, 2, 0})));
++    // still mid-swing: FULL keeps falling
++    ASSERT_GT(entered[1], 1.2f);
++
++    for (int i = 0; i < 30; ++i) {
++        auto walk = Frame();
++        vec3 shift{0.0f, 0.0f, -4.3f * kFrame};
++        glm_translate_make(walk.motion, shift);
++        ASSERT_TRUE(hold.Step(&walk));
++        ExpectNear(hold.Posed(1, {1, 2, 0}), entered, 1e-5f);
++    }
++    full.Run(30, Frame());
++    const auto fell = full.Posed(1, {1, 2, 0});
++    EXPECT_GT(std::hypot(fell[0] - entered[0], fell[1] - entered[1],
++                         fell[2] - entered[2]),
++              0.1f);
++
++    // Leaving: the first FULL frame starts from the held tail with no
++    // velocity, so it moves only by one frame of gravity from rest: two
++    // fixed steps of gravity_power 2 are at most 3 * 2 / 120 = 0.05.
++    hold.SetSpringModes({0});
++    ASSERT_TRUE(hold.Step(&frame));
++    const auto left = hold.Posed(1, {1, 2, 0});
++    const auto exit_move = std::hypot(left[0] - entered[0], left[1] - entered[1],
++                                      left[2] - entered[2]);
++    EXPECT_LE(exit_move, 0.0501f);
++    std::printf("hold exit: tail moved %.4f in the first FULL frame\n", exit_move);
++    // and then it swings on down as usual
++    hold.Run(600, Frame());
++    ExpectNear(hold.Posed(1, {1, 2, 0}), {0, 1, 0}, 0.02f);
++
++    // Without forces, leaving does not move the tail at all.
++    SpringHarness rest(MakeHair(0.0f, 0.0f));
++    rest.Run(5, Frame());
++    rest.SetSpringModes({1});
++    rest.Run(5, Frame());
++    const auto held = rest.Posed(1, {1, 2, 0});
++    rest.SetSpringModes({0});
++    rest.Run(3, Frame());
++    ExpectNear(rest.Posed(1, {1, 2, 0}), held, 1e-5f);
++}
+ }  // namespace
+ }  // namespace ysm::test

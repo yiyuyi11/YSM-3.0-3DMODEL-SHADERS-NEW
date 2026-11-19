@@ -1,0 +1,17 @@
+[09:28:05] [ysm_fitbox fitter/INFO] [YSM FitBox/]: Fitted YSM model 0488d5975f6623ce1db6f4ea1cb6ba9d41c7d25f1490044511eb983d8ae79b24:
+skinned mesh, 292 bones, 77730 samples: 59534 core (area 5.787), loose area 2.455
+  part HEAD            bone Head            10899 samples  capsule r=0.137 len=0.094 a=(-0.048 2.094 0.010) b=(0.046 2.093 0.009)
+  part CHEST           bone UpBody          16848 samples  box half=(0.248 0.314 0.225) c=(-0.011 1.565 0.046)
+  part PELVIS          bone AllBody           573 samples  box half=(0.172 0.116 0.122) c=(0.000 1.277 -0.003)
+  part LEFT_UPPER_ARM  bone LeftArm          7648 samples  capsule r=0.113 len=0.192 a=(-0.157 1.650 0.023) b=(-0.157 1.458 0.023)
+  part LEFT_FOREARM    bone LeftForeArm      3739 samples  capsule r=0.072 len=0.184 a=(-0.140 1.431 0.006) b=(-0.141 1.248 -0.011)
+  part LEFT_HAND       bone LeftHand         1203 samples  box half=(0.028 0.094 0.064) c=(-0.138 1.076 -0.051)
+  part RIGHT_UPPER_ARM bone RightArm         5651 samples  capsule r=0.110 len=0.077 a=(0.155 1.652 0.022) b=(0.155 1.575 0.022)
+  part RIGHT_FOREARM   bone RightForeArm     1637 samples  capsule r=0.072 len=0.189 a=(0.139 1.432 0.006) b=(0.140 1.244 -0.011)
+  part RIGHT_HAND      bone RightHand        1201 samples  box half=(0.028 0.093 0.064) c=(0.138 1.075 -0.051)
+  part LEFT_THIGH      bone LeftLeg           951 samples  capsule r=0.100 len=0.309 a=(-0.112 1.164 -0.006) b=(-0.112 0.855 -0.006)
+  part LEFT_SHIN       bone LeftLowerLeg     2042 samples  capsule r=0.073 len=0.444 a=(-0.115 0.673 0.020) b=(-0.115 0.229 0.033)
+  part LEFT_FOOT       bone LeftFoot         2127 samples  box half=(0.140 0.100 0.051) c=(-0.103 0.067 -0.020)
+  part RIGHT_THIGH     bone RightLeg         2271 samples  capsule r=0.103 len=0.302 a=(0.120 1.160 -0.008) b=(0.120 0.858 -0.008)
+  part RIGHT_SHIN      bone RightLowerLeg     731 samples  capsule r=0.073 len=0.390 a=(0.111 0.676 0.022) b=(0.111 0.286 0.034)
+  part RIGHT_FOOT      bone RightFoot        2013 samples  box half=(0.139 0.099 0.051) c=(0.103 0.066 -0.020)

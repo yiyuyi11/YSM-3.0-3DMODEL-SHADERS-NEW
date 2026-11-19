@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+MixinConfigs: ysm_fitbox.mixins.json
+Implementation-Title: ysm_fitbox
+Implementation-Version: 0.2.1

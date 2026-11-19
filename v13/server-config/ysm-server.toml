@@ -1,0 +1,43 @@
+#The published address of the default model when a player first enters the game
+DefaultModelPath = "default"
+#The default model texture when a player first enters the game
+DefaultModelTexture = "default"
+#Whether or not players are allowed to switch models
+CanSwitchModel = true
+#Complete published addresses hidden from the client model selection screen
+#Example: ["local:custom/model.mxc", "global:auth/pack/private/legacy.ysm"]
+ClientNotDisplayModelPaths = []
+
+[server_scheduler]
+	#Concurrent level for processing models. Value 0 means AUTO.
+	#Range: 0 ~ 7
+	ThreadCount = 0
+	#Global model distribution limit in Mbps. 0 means unlimited.
+	#Range: 0 ~ 999
+	BandwidthLimit = 5
+	#Per-player queue size that enables one-fragment round-robin visits.
+	#Range: 1 ~ 255
+	DispatchSoftLimit = 24
+	#Atomic per-player logical-packet admission cap.
+	#Range: 2 ~ 256
+	DispatchHardLimit = 48
+	#Restrict unauthorized auth-model icon and chunk downloads.
+	RestrictedAuth = false
+	#Suppress network synchronization of partial features to reduce bandwidth usage
+	#Only effective when there are tons of players
+	LowBandwidthUsage = false
+
+[player_uploads]
+	#Whether players may upload their own models. An uploaded model is stored under auth/uploads,
+	#only its uploader may select it, and everyone else still sees it on the uploader.
+	Enabled = true
+	#Permission level needed to upload: 0 lets every player upload, 2 only operators.
+	#Range: 0 ~ 4
+	PermissionLevel = 0
+	#Largest upload, in megabytes, both as sent and once unpacked.
+	#Range: 1 ~ 1024
+	MaxMegabytes = 64
+	#How many uploaded models one player may keep on the server.
+	#Range: 1 ~ 100
+	MaxModelsPerPlayer = 3
+

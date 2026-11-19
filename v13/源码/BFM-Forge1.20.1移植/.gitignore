@@ -1,0 +1,12 @@
+build/
+.gradle/
+.gradle-home/
+libs/
+run/
+logs/
+*.class
+__pycache__/
+
+# Local verification tooling output
+build-local/
+*.jar.txt

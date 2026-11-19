@@ -1,0 +1,142 @@
+--- a/modules/gfx/include/gfx/renderer/model_state.h
++++ b/modules/gfx/include/gfx/renderer/model_state.h
+@@ -159,6 +159,11 @@
+     std::array<float, 3> spring_body_velocity_{};
+     // Animated poses, restored before each fixed step and the final pose.
+     std::vector<BonePose> spring_animated_poses_;
++    // The previous extraction's animated poses and visited flags, moved into
++    // the current model space; fixed steps blend from them to the current
++    // animated poses.
++    std::vector<BonePose> spring_previous_poses_;
++    std::vector<uint8_t> spring_previous_visited_;
+     std::vector<float> morph_weights_;
+     bool morphs_active_ = false;
+ };
+--- a/modules/gfx/src/renderer/spring_physics.cc
++++ b/modules/gfx/src/renderer/spring_physics.cc
+@@ -133,6 +133,44 @@
+     const auto t = std::clamp(Dot(Sub(point, a), ab) / squared, 0.0f, 1.0f);
+     return Add(a, Scale(ab, t));
+ }
++
++// A pose a share of the way from one animated pose to the next. The bone's
++// pivot travels in a straight line and each basis column turns and scales
++// between its two ends, so an intermediate pose neither shrinks nor swings
++// about the model origin the way a plain matrix blend does.
++void BlendPose(const mat4 from, const mat4 to, const Vec3& pivot, float share,
++               mat4 out) {
++    for (int column = 0; column < 3; ++column) {
++        Vec3 blended;
++        float from_squared = 0.0f;
++        float to_squared = 0.0f;
++        for (int row = 0; row < 3; ++row) {
++            const auto a = from[column][row];
++            const auto b = to[column][row];
++            blended[row] = a + (b - a) * share;
++            from_squared += a * a;
++            to_squared += b * b;
++        }
++        const auto from_length = std::sqrt(from_squared);
++        const auto target =
++            from_length + (std::sqrt(to_squared) - from_length) * share;
++        const auto length = Length(blended);
++        const auto scale = length > kEpsilon ? target / length : 1.0f;
++        for (int row = 0; row < 3; ++row) {
++            out[column][row] = blended[row] * scale;
++        }
++        out[column][3] = 0.0f;
++    }
++    const auto start = TransformPoint(from, pivot);
++    const auto head =
++        Add(start, Scale(Sub(TransformPoint(to, pivot), start), share));
++    for (int row = 0; row < 3; ++row) {
++        out[3][row] = head[row] - (out[0][row] * pivot[0] +
++                                   out[1][row] * pivot[1] +
++                                   out[2][row] * pivot[2]);
++    }
++    out[3][3] = 1.0f;
++}
+ }  // namespace
+ 
+ PhysicsFrame PhysicsFrame::Unpack(std::span<const float, kFloatCount> packed) {
+@@ -150,6 +188,7 @@
+     if (joints.empty()) {
+         spring_tails_.clear();
+         spring_model_ = nullptr;
++        spring_previous_poses_.clear();
+         return;
+     }
+     const auto& bones = baked_model_->Bones().list;
+@@ -173,6 +212,15 @@
+             tail.current = TransformPoint(frame.motion, tail.current);
+             tail.previous = TransformPoint(frame.motion, tail.previous);
+         }
++        // The previous extraction's animated poses, moved into this model
++        // space the same way: where the body was then, seen from now.
++        mat4 motion;
++        std::memcpy(motion, frame.motion, sizeof(motion));
++        for (auto& previous : spring_previous_poses_) {
++            mat4 moved;
++            glm_mat4_mul(motion, previous.pose, moved);
++            glm_mat4_copy(moved, previous.pose);
++        }
+         mat3 turn;
+         for (int column = 0; column < 3; ++column) {
+             for (int row = 0; row < 3; ++row) {
+@@ -354,11 +402,35 @@
+         static_cast<int>(spring_accumulator_ / kFixedStepSeconds);
+     spring_accumulator_ =
+         std::max(spring_accumulator_ - steps * kFixedStepSeconds, 0.0f);
+-    if (steps > 0) {
+-        spring_animated_poses_.assign(bone_poses_.begin(), bone_poses_.end());
+-    }
++    // Every fixed step sees the animated poses the share of the way from the
++    // previous extraction to this one at which it falls. Posing all of them
++    // at this extraction's poses would move the colliders, the joints'
++    // pivots and the body's travel by a whole frame at once: at low frame
++    // rates a raised knee then lands beyond a skirt's tails and pushes them
++    // out on the far side, and the travel throws every tail back by the
++    // frame's distance before the bone length is restored.
++    spring_animated_poses_.assign(bone_poses_.begin(), bone_poses_.end());
++    const bool blend = !reset && steps > 1 &&
++                       spring_previous_poses_.size() == bone_poses_.size() &&
++                       spring_previous_visited_.size() == bone_visited_.size();
+     for (int step = 0; step < steps; ++step) {
+-        if (step > 0) {
++        if (blend) {
++            const auto share =
++                static_cast<float>(step + 1) / static_cast<float>(steps);
++            for (size_t bone = 0; bone < bone_poses_.size(); ++bone) {
++                bone_poses_[bone] = spring_animated_poses_[bone];
++                if (bone_visited_[bone] == 0 ||
++                    spring_previous_visited_[bone] == 0) {
++                    continue;
++                }
++                const auto& pivot = bones[bone].pivot;
++                BlendPose(spring_previous_poses_[bone].pose,
++                          spring_animated_poses_[bone].pose,
++                          {pivot[0] * kModelUnit, pivot[1] * kModelUnit,
++                           pivot[2] * kModelUnit},
++                          share, bone_poses_[bone].pose);
++            }
++        } else if (step > 0) {
+             std::copy(spring_animated_poses_.begin(),
+                       spring_animated_poses_.end(), bone_poses_.begin());
+         }
+@@ -372,6 +444,7 @@
+                 std::copy(spring_animated_poses_.begin(),
+                           spring_animated_poses_.end(), bone_poses_.begin());
+                 spring_tails_.clear();
++                spring_previous_poses_.clear();
+                 return;
+             }
+             aim(joints[index], animated, spring_tails_[index].current);
+@@ -395,5 +468,8 @@
+         aim(joints[index], animated,
+             Add(tail.previous, Scale(Sub(tail.current, tail.previous), alpha)));
+     }
++    // This extraction's animated poses start the next one's blend.
++    std::swap(spring_previous_poses_, spring_animated_poses_);
++    spring_previous_visited_.assign(bone_visited_.begin(), bone_visited_.end());
+ }
+ }  // namespace ysm::gfx::renderer
