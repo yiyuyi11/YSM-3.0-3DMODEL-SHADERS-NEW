@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# fpbench wrapper: `fpbench render|sheet|metrics|ik|compare|guns|clips ...` (see README.md)
+exec python3 "$(dirname "$(readlink -f "$0")")/fpbench.py" "$@"

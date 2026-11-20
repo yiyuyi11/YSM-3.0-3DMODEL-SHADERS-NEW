@@ -1,0 +1,2508 @@
+diff -rN handoff/anticlip/native-pristine/modules/gfx/include/gfx/bake/baked_model.h nativebuild/src/YesSteveModel-Native/modules/gfx/include/gfx/bake/baked_model.h
+--- handoff/anticlip/native-pristine/modules/gfx/include/gfx/bake/baked_model.h	2026-11-18 04:17:13.527036471 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/include/gfx/bake/baked_model.h	2026-11-20 09:51:46.206092755 +0000
+@@ -149,6 +149,18 @@
+     std::array<float, 3> delta{};
+ };
+ 
++// Anti-clip push-out of one lane: after skinning, the vertex leaves each body
++// capsule of its mask it is more than allowance (its rest depth, model units)
++// inside, by share of the excess, along the capsule's radius. With a margin
++// the push ramps in smoothly over the first 2 * margin of the excess.
++struct MeshAntiClip {
++    uint32_t capsules = 0;
++    float share = 0.0f;
++    float allowance = 0.0f;
++    float margin = 0.0f;
++    uint8_t lane = 0;
++};
++
+ template <simd::Width kVecWidth>
+ struct BakedModelMesh {
+     using Block = MeshVertexBlock<kVecWidth>;
+@@ -165,6 +177,10 @@
+     // morph_deltas[morph_offsets[b], morph_offsets[b + 1]).
+     std::vector<uint32_t> morph_offsets;
+     std::vector<MeshMorphDelta> morph_deltas;
++    // Without push-out empty; otherwise block b's lanes are
++    // anti_clip[anti_clip_offsets[b], anti_clip_offsets[b + 1]).
++    std::vector<uint32_t> anti_clip_offsets;
++    std::vector<MeshAntiClip> anti_clip;
+ };
+ 
+ // 渲染用
+@@ -250,6 +266,26 @@
+     std::array<float, 4> limit_rotation{0.0f, 0.0f, 0.0f, 1.0f};
+     float limit_angle = 0.0f;
+     float limit_yaw = 0.0f;
++    // Anti-clip backstop: BakedSprings::body index + 1, 0 for none. The tail
++    // stays at most backstop_allowance (model units) closer to that capsule's
++    // axis than the animated pose puts it.
++    uint32_t backstop = 0;
++    float backstop_allowance = 0.0f;
++    // Anti-clip leg sync: BakedSprings::body index + 1, 0 for none. Every
++    // step the animated tail moves out by sync_share of how far that capsule's
++    // bone would carry the rest tail beyond it, away from the capsule's axis.
++    uint32_t sync = 0;
++    float sync_share = 0.0f;
++};
++
++// Anti-clip distance limit between two joints' tails (BakedSprings::joints
++// indices), rest distance in model units; points along it may come allowance
++// (model units, their rest depth) into a collider before they are pushed out.
++struct SpringLink {
++    uint32_t a = 0;
++    uint32_t b = 0;
++    float rest = 0.0f;
++    float allowance = 0.0f;
+ };
+ 
+ enum class SpringColliderType : uint32_t {
+@@ -271,6 +307,19 @@
+     SpringColliderType type = SpringColliderType::kOutside;
+ };
+ 
++// Anti-clip body proxy capsule: radius at head, tail_radius at tail, linear
++// in between along the axis.
++struct BodyCapsule {
++    uint32_t bone = 0;
++    std::array<float, 3> head{};
++    std::array<float, 3> tail{};
++    float radius = 0.0f;
++    float tail_radius = 0.0f;
++};
++
++// At most this many body capsules (the push-out masks are 32 bits).
++inline constexpr size_t kMaxBodyCapsules = 32;
++
+ struct BakedSprings {
+     // Strictly ascending bone, so ancestors simulate before descendants.
+     std::vector<SpringJoint> joints;
+@@ -281,6 +330,24 @@
+     // Per chain, the baked bone index + 1 whose space carries the chain's
+     // inertia (VRM spring center); 0 for world space.
+     std::vector<uint32_t> chain_centers;
++    // Anti-clip body proxy: joint backstops and the mesh push-out test these.
++    std::vector<BodyCapsule> body;
++    // Anti-clip links, after every step: a link longer than rest * (1 +
++    // link_stretch) pulls its tails back to that length, one shorter than
++    // rest * (1 - link_compression) pushes them apart; link_points points
++    // along each link stay out of both chains' colliders.
++    std::vector<SpringLink> links;
++    float link_stretch = 0.0f;
++    float link_compression = 0.0f;
++    uint32_t link_points = 0;
++    // Inertia limits (anti-clip, after MagicaCloth's world movement and
++    // rotation speed limits): per second, the model's turn beyond
++    // inertia_turn_limit radians and its travel beyond inertia_move_limit
++    // model units, and inertia_damping of the rest, carry the tails with the
++    // model instead of leaving them behind. 0: no limit, full inertia.
++    float inertia_turn_limit = 0.0f;
++    float inertia_move_limit = 0.0f;
++    float inertia_damping = 0.0f;
+ };
+ 
+ struct BakedModelInfo {
+@@ -339,6 +406,7 @@
+                vector_bytes(springs_.chain_offsets) +
+                vector_bytes(springs_.chain_colliders) +
+                vector_bytes(springs_.chain_centers) +
++               vector_bytes(springs_.body) +
+                VisitCubes([&](const auto& cubes) {
+                    return sizeof(cubes) + vector_bytes(cubes.cutout) +
+                           vector_bytes(cubes.cutout_no_culling) +
+@@ -351,7 +419,9 @@
+                           vector_bytes(cubes.mesh.outline) +
+                           vector_bytes(cubes.mesh.morphs) +
+                           vector_bytes(cubes.mesh.morph_offsets) +
+-                          vector_bytes(cubes.mesh.morph_deltas);
++                          vector_bytes(cubes.mesh.morph_deltas) +
++                          vector_bytes(cubes.mesh.anti_clip_offsets) +
++                          vector_bytes(cubes.mesh.anti_clip);
+                });
+     }
+ 
+diff -rN handoff/anticlip/native-pristine/modules/gfx/include/gfx/renderer/model_state.h nativebuild/src/YesSteveModel-Native/modules/gfx/include/gfx/renderer/model_state.h
+--- handoff/anticlip/native-pristine/modules/gfx/include/gfx/renderer/model_state.h	2026-11-18 05:19:04.371930800 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/include/gfx/renderer/model_state.h	2026-11-19 19:03:05.108054966 +0000
+@@ -171,6 +171,26 @@
+         bool valid = false;
+     };
+ 
++    // A linked joint's working state within its level's step (anti-clip
++    // links): its animated head, direction (leg sync applied) and length,
++    // the bone's posed direction (to turn it from), limit space, the tail it
++    // is heading for and its contact so far.
++    struct SpringLinkState {
++        std::array<float, 3> head{};
++        std::array<float, 3> direction{};
++        std::array<float, 3> posed{};
++        std::array<float, 3> limit_x{};
++        std::array<float, 3> limit_y{};
++        std::array<float, 3> limit_z{};
++        std::array<float, 3> next{};
++        std::array<float, 3> contact_normal{};
++        float length = 0.0f;
++        bool limited = false;
++        bool contact = false;
++        bool live = false;
++        bool moved = false;
++    };
++
+     void StepSprings(const PhysicsFrame& frame);
+ 
+     void UpdateMorphWeights(std::span<const BoneAttribute> bone_attributes);
+@@ -210,6 +230,18 @@
+     // Per chain, its center's state; per collider, its moving ends.
+     std::vector<SpringCenter> spring_centers_;
+     std::vector<SpringColliderEnds> spring_collider_ends_;
++    // Anti-clip links: the joints of linked chains level by level
++    // (spring_link_order_[spring_link_level_offsets_[l], [l + 1])), the
++    // same-level links per level likewise, per joint whether its chain is
++    // linked, the joint at which the linked chains step, and the per joint
++    // working state. Empty without (usable) links.
++    std::vector<uint32_t> spring_link_order_;
++    std::vector<uint32_t> spring_link_level_offsets_;
++    std::vector<uint32_t> spring_link_links_;
++    std::vector<uint32_t> spring_link_link_offsets_;
++    std::vector<uint8_t> spring_linked_;
++    size_t spring_link_first_ = 0;
++    std::vector<SpringLinkState> spring_link_states_;
+     std::vector<float> morph_weights_;
+     bool morphs_active_ = false;
+ };
+diff -rN handoff/anticlip/native-pristine/modules/gfx/src/bake/baked_model.cc nativebuild/src/YesSteveModel-Native/modules/gfx/src/bake/baked_model.cc
+--- handoff/anticlip/native-pristine/modules/gfx/src/bake/baked_model.cc	2026-11-18 04:17:30.507179548 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/src/bake/baked_model.cc	2026-11-20 09:52:01.679187423 +0000
+@@ -77,7 +77,7 @@
+                           size_t bone_count);
+ 
+ absl::Status ValidateSprings(const model_proto::SpringBones& springs,
+-                             size_t bone_count);
++                             size_t bone_count, size_t vertex_count);
+ 
+ struct BoneHierarchyInfo {
+     std::array<float, 3> pivot{};
+@@ -236,8 +236,11 @@
+             ValidateMesh(*prepared.model.mesh, prepared.model.bones.size()));
+     }
+     if (prepared.model.springs.has_value()) {
+-        YSM_RETURN_IF_ERROR(ValidateSprings(*prepared.model.springs,
+-                                            prepared.model.bones.size()));
++        YSM_RETURN_IF_ERROR(ValidateSprings(
++            *prepared.model.springs, prepared.model.bones.size(),
++            prepared.model.mesh.has_value()
++                ? prepared.model.mesh->positions.size() / 3
++                : 0));
+     }
+     YSM_ASSIGN_OR_RETURN(prepared.hierarchy,
+                          BuildBoneHierarchy(prepared.model));
+@@ -488,7 +491,7 @@
+ }
+ 
+ absl::Status ValidateSprings(const model_proto::SpringBones& springs,
+-                             size_t bone_count) {
++                             size_t bone_count, size_t vertex_count) {
+     const auto invalid = [](std::string_view condition) {
+         return absl::InvalidArgumentError(
+             absl::StrCat("Invalid spring bones: ", condition, "."));
+@@ -531,6 +534,16 @@
+                                    [](float v) { return v != 0.0f; })))) {
+             return invalid("joint limit is malformed");
+         }
++        if (joint.backstop > springs.body.size() ||
++            !std::isfinite(joint.backstop_allowance) ||
++            joint.backstop_allowance < 0.0f) {
++            return invalid("joint backstop is malformed");
++        }
++        if (joint.sync > springs.body.size() ||
++            !std::isfinite(joint.sync_share) || joint.sync_share < 0.0f ||
++            joint.sync_share > 1.0f) {
++            return invalid("joint sync is malformed");
++        }
+     }
+     for (const auto& collider : springs.colliders) {
+         if (collider.bone >= bone_count || collider.head.size() != 3 ||
+@@ -556,6 +569,67 @@
+             return invalid("chain center is out of range");
+         }
+     }
++    if (springs.body.size() > kMaxBodyCapsules) {
++        return invalid("too many body capsules");
++    }
++    for (const auto& capsule : springs.body) {
++        if (capsule.bone >= bone_count || capsule.head.size() != 3 ||
++            capsule.tail.size() != 3 || !IsFinite(capsule.head) ||
++            !IsFinite(capsule.tail) || !std::isfinite(capsule.radius) ||
++            !std::isfinite(capsule.tail_radius) || capsule.radius < 0.0f ||
++            capsule.tail_radius < 0.0f) {
++            return invalid("body capsule is malformed");
++        }
++    }
++    if (!springs.push_share.empty() || !springs.push_allowance.empty() ||
++        !springs.push_capsules.empty() || !springs.push_margin.empty()) {
++        const auto capsule_bits =
++            springs.body.size() >= 32
++                ? ~uint32_t{0}
++                : (uint32_t{1} << springs.body.size()) - 1;
++        if (springs.push_share.size() != vertex_count ||
++            springs.push_allowance.size() != vertex_count ||
++            springs.push_capsules.size() != vertex_count ||
++            (!springs.push_margin.empty() &&
++             springs.push_margin.size() != vertex_count) ||
++            !IsFinite(springs.push_share) || !IsFinite(springs.push_allowance) ||
++            !IsFinite(springs.push_margin) ||
++            std::ranges::any_of(springs.push_share,
++                                [](float s) { return s < 0.0f || s > 1.0f; }) ||
++            std::ranges::any_of(springs.push_allowance,
++                                [](float a) { return a < 0.0f; }) ||
++            std::ranges::any_of(springs.push_margin,
++                                [](float m) { return m < 0.0f; }) ||
++            std::ranges::any_of(springs.push_capsules, [&](uint32_t mask) {
++                return (mask & ~capsule_bits) != 0;
++            })) {
++            return invalid("vertex push-out is malformed");
++        }
++    }
++    constexpr size_t kMaxLinks = size_t{1} << 16;
++    constexpr uint32_t kMaxLinkPoints = 16;
++    if (springs.links.size() > kMaxLinks || springs.link_points > kMaxLinkPoints ||
++        !std::isfinite(springs.link_stretch) ||
++        !std::isfinite(springs.link_compression) || springs.link_stretch < 0.0f ||
++        springs.link_compression < 0.0f || springs.link_compression > 1.0f) {
++        return invalid("links are malformed");
++    }
++    for (const auto& link : springs.links) {
++        if (link.a >= bone_count || link.b >= bone_count || link.a == link.b ||
++            jointed[link.a] == 0 || jointed[link.b] == 0 ||
++            !std::isfinite(link.rest) || link.rest < 0.0f ||
++            !std::isfinite(link.allowance) || link.allowance < 0.0f) {
++            return invalid("link is malformed");
++        }
++    }
++    const auto limit_ok = [](float value) {
++        return std::isfinite(value) && value >= 0.0f;
++    };
++    if (!limit_ok(springs.inertia_turn_limit) ||
++        !limit_ok(springs.inertia_move_limit) ||
++        !limit_ok(springs.inertia_damping) || springs.inertia_damping > 1.0f) {
++        return invalid("inertia limits are malformed");
++    }
+     return OkStatus();
+ }
+ 
+@@ -586,6 +660,10 @@
+             .limit = static_cast<SpringLimit>(joint.limit),
+             .limit_angle = joint.limit_angle,
+             .limit_yaw = joint.limit_yaw,
++            .backstop = joint.backstop,
++            .backstop_allowance = joint.backstop_allowance,
++            .sync = joint.sync,
++            .sync_share = joint.sync_share,
+         };
+         if (joint.limit_rotation.size() == 4) {
+             const auto& q = joint.limit_rotation;
+@@ -619,6 +697,37 @@
+         output.chain_centers.push_back(
+             chain.center == 0 ? 0 : sorted_by_original[chain.center - 1] + 1);
+     }
++    output.body.reserve(springs.body.size());
++    for (const auto& capsule : springs.body) {
++        output.body.push_back({
++            .bone = sorted_by_original[capsule.bone],
++            .head = ToArray3(capsule.head),
++            .tail = ToArray3(capsule.tail),
++            .radius = capsule.radius,
++            .tail_radius = capsule.tail_radius,
++        });
++    }
++    // Links name joints by bone; baked joints ascend by bone.
++    output.links.reserve(springs.links.size());
++    for (const auto& link : springs.links) {
++        const auto joint_of = [&](uint32_t bone) {
++            const auto baked_bone = sorted_by_original[bone];
++            return static_cast<uint32_t>(
++                std::ranges::lower_bound(output.joints, baked_bone,
++                                         {}, &SpringJoint::bone) -
++                output.joints.begin());
++        };
++        output.links.push_back({.a = joint_of(link.a),
++                                .b = joint_of(link.b),
++                                .rest = link.rest,
++                                .allowance = link.allowance});
++    }
++    output.link_stretch = springs.link_stretch;
++    output.link_compression = springs.link_compression;
++    output.link_points = springs.link_points;
++    output.inertia_turn_limit = springs.inertia_turn_limit;
++    output.inertia_move_limit = springs.inertia_move_limit;
++    output.inertia_damping = springs.inertia_damping;
+     return output;
+ }
+ 
+@@ -1004,6 +1113,8 @@
+     // Morph deltas grouped by source vertex; empty without morphs.
+     std::vector<uint32_t> morph_vertex_offsets_;
+     std::vector<MeshMorphDelta> morph_vertex_deltas_;
++    // Validated per-vertex push-out (anti-clip); null without.
++    const model_proto::SpringBones* push_ = nullptr;
+ 
+     // Meshlet under construction.
+     std::vector<uint32_t> vertices_;
+@@ -1094,11 +1205,27 @@
+                             output_.morph_deltas.push_back(delta);
+                         }
+                     }
++                    if (push_ != nullptr && push_->push_share[vertex] > 0.0f &&
++                        push_->push_capsules[vertex] != 0) {
++                        output_.anti_clip.push_back({
++                            .capsules = push_->push_capsules[vertex],
++                            .share = push_->push_share[vertex],
++                            .allowance = push_->push_allowance[vertex],
++                            .margin = push_->push_margin.empty()
++                                          ? 0.0f
++                                          : push_->push_margin[vertex],
++                            .lane = static_cast<uint8_t>(lane),
++                        });
++                    }
+                 }
+                 if (!morph_vertex_offsets_.empty()) {
+                     output_.morph_offsets.push_back(
+                         static_cast<uint32_t>(output_.morph_deltas.size()));
+                 }
++                if (push_ != nullptr) {
++                    output_.anti_clip_offsets.push_back(
++                        static_cast<uint32_t>(output_.anti_clip.size()));
++                }
+             }
+         }
+         meshlet.block_count = static_cast<uint16_t>(output_.blocks.size() -
+@@ -1125,11 +1252,17 @@
+    public:
+     MeshBaker(const model_proto::SkinnedMesh& source,
+               const std::vector<MeshInfluence>& influences, bool has_pbr,
++              const model_proto::SpringBones* springs,
+               BakedModelMesh<kWidth>& output)
+         : source_(source),
+           influences_(influences),
+           has_pbr_(has_pbr),
+           output_(output) {
++        if (springs != nullptr && !springs->push_share.empty() &&
++            !springs->body.empty()) {
++            push_ = springs;
++            output_.anti_clip_offsets.assign(1, 0);
++        }
+         if (source.morphs.empty()) {
+             return;
+         }
+@@ -1567,7 +1700,8 @@
+         output_.bones.list[sorted_index].solid = solid;
+     }
+ 
+-    void AddMesh(const model_proto::SkinnedMesh& mesh, Texture texture) {
++    void AddMesh(const model_proto::SkinnedMesh& mesh, Texture texture,
++                 const model_proto::SpringBones* springs) {
+         const auto vertex_count = mesh.positions.size() / 3;
+         if (vertex_count == 0 ||
+             (mesh.triangles.empty() && mesh.outline_triangles.empty())) {
+@@ -1590,7 +1724,7 @@
+                  .driver = static_cast<MorphDriver>(morph.driver)});
+         }
+         MeshBaker<kWidth> mesh_baker(mesh, influences, options_.has_pbr,
+-                                     output_mesh);
++                                     springs, output_mesh);
+         for (const auto& [key, triangles] : GroupMeshTriangles(
+                  mesh, influences, texture, options_.force_translucent)) {
+             const auto triangle_kind = static_cast<MeshTriangleKind>(key >> 32);
+@@ -1675,7 +1809,8 @@
+                       inspector);
+     }
+     if (model.mesh.has_value()) {
+-        baker.AddMesh(*model.mesh, texture);
++        baker.AddMesh(*model.mesh, texture,
++                      model.springs.has_value() ? &*model.springs : nullptr);
+     }
+     auto output = baker.Finish();
+     auto springs = model.springs.has_value()
+diff -rN handoff/anticlip/native-pristine/modules/gfx/src/bake/baked_serializer.cc nativebuild/src/YesSteveModel-Native/modules/gfx/src/bake/baked_serializer.cc
+--- handoff/anticlip/native-pristine/modules/gfx/src/bake/baked_serializer.cc	2026-11-18 04:18:00.298428534 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/src/bake/baked_serializer.cc	2026-11-20 09:52:01.684187454 +0000
+@@ -119,7 +119,28 @@
+     YLT_REFL(SpringJointView, value.bone, value.chain, value.tail,
+              value.gravity_dir, value.hit_radius, value.stiffness, value.drag,
+              value.gravity_power, value.limit, value.limit_rotation,
+-             value.limit_angle, value.limit_yaw);
++             value.limit_angle, value.limit_yaw, value.backstop,
++             value.backstop_allowance, value.sync, value.sync_share);
++};
++
++template <typename Link>
++struct SpringLinkView {
++    Link& value;
++    YLT_REFL(SpringLinkView, value.a, value.b, value.rest, value.allowance);
++};
++
++template <typename Capsule>
++struct BodyCapsuleView {
++    Capsule& value;
++    YLT_REFL(BodyCapsuleView, value.bone, value.head, value.tail, value.radius,
++             value.tail_radius);
++};
++
++template <typename Value>
++struct MeshAntiClipView {
++    Value& value;
++    YLT_REFL(MeshAntiClipView, value.capsules, value.share, value.allowance,
++             value.margin, value.lane);
+ };
+ 
+ template <typename Collider>
+@@ -174,7 +195,9 @@
+            ViewsSize<MeshletView>(mesh.outline) +
+            ViewsSize<MeshMorphView>(mesh.morphs) +
+            struct_pack::get_write_size(mesh.morph_offsets) +
+-           ViewsSize<MeshMorphDeltaView>(mesh.morph_deltas);
++           ViewsSize<MeshMorphDeltaView>(mesh.morph_deltas) +
++           struct_pack::get_write_size(mesh.anti_clip_offsets) +
++           ViewsSize<MeshAntiClipView>(mesh.anti_clip);
+ }
+ 
+ template <typename Writer, simd::Width kWidth>
+@@ -187,6 +210,8 @@
+     WriteViews<MeshMorphView>(writer, mesh.morphs);
+     struct_pack::write(writer, mesh.morph_offsets);
+     WriteViews<MeshMorphDeltaView>(writer, mesh.morph_deltas);
++    struct_pack::write(writer, mesh.anti_clip_offsets);
++    WriteViews<MeshAntiClipView>(writer, mesh.anti_clip);
+ }
+ 
+ template <typename Reader, simd::Width kWidth>
+@@ -212,7 +237,13 @@
+     if (auto ec = struct_pack::read(reader, mesh.morph_offsets); ec) {
+         return ec;
+     }
+-    return ReadViews<MeshMorphDeltaView>(reader, mesh.morph_deltas);
++    if (auto ec = ReadViews<MeshMorphDeltaView>(reader, mesh.morph_deltas); ec) {
++        return ec;
++    }
++    if (auto ec = struct_pack::read(reader, mesh.anti_clip_offsets); ec) {
++        return ec;
++    }
++    return ReadViews<MeshAntiClipView>(reader, mesh.anti_clip);
+ }
+ 
+ size_t SpringsSize(const BakedSprings& springs) {
+@@ -220,7 +251,15 @@
+            ViewsSize<SpringColliderView>(springs.colliders) +
+            struct_pack::get_write_size(springs.chain_offsets) +
+            struct_pack::get_write_size(springs.chain_colliders) +
+-           struct_pack::get_write_size(springs.chain_centers);
++           struct_pack::get_write_size(springs.chain_centers) +
++           ViewsSize<BodyCapsuleView>(springs.body) +
++           ViewsSize<SpringLinkView>(springs.links) +
++           struct_pack::get_write_size(springs.link_stretch) +
++           struct_pack::get_write_size(springs.link_compression) +
++           struct_pack::get_write_size(springs.link_points) +
++           struct_pack::get_write_size(springs.inertia_turn_limit) +
++           struct_pack::get_write_size(springs.inertia_move_limit) +
++           struct_pack::get_write_size(springs.inertia_damping);
+ }
+ 
+ template <typename Writer>
+@@ -230,6 +269,14 @@
+     struct_pack::write(writer, springs.chain_offsets);
+     struct_pack::write(writer, springs.chain_colliders);
+     struct_pack::write(writer, springs.chain_centers);
++    WriteViews<BodyCapsuleView>(writer, springs.body);
++    WriteViews<SpringLinkView>(writer, springs.links);
++    struct_pack::write(writer, springs.link_stretch);
++    struct_pack::write(writer, springs.link_compression);
++    struct_pack::write(writer, springs.link_points);
++    struct_pack::write(writer, springs.inertia_turn_limit);
++    struct_pack::write(writer, springs.inertia_move_limit);
++    struct_pack::write(writer, springs.inertia_damping);
+ }
+ 
+ template <typename Reader>
+@@ -247,7 +294,31 @@
+     if (auto ec = struct_pack::read(reader, springs.chain_colliders); ec) {
+         return ec;
+     }
+-    return struct_pack::read(reader, springs.chain_centers);
++    if (auto ec = struct_pack::read(reader, springs.chain_centers); ec) {
++        return ec;
++    }
++    if (auto ec = ReadViews<BodyCapsuleView>(reader, springs.body); ec) {
++        return ec;
++    }
++    if (auto ec = ReadViews<SpringLinkView>(reader, springs.links); ec) {
++        return ec;
++    }
++    if (auto ec = struct_pack::read(reader, springs.link_stretch); ec) {
++        return ec;
++    }
++    if (auto ec = struct_pack::read(reader, springs.link_compression); ec) {
++        return ec;
++    }
++    if (auto ec = struct_pack::read(reader, springs.link_points); ec) {
++        return ec;
++    }
++    if (auto ec = struct_pack::read(reader, springs.inertia_turn_limit); ec) {
++        return ec;
++    }
++    if (auto ec = struct_pack::read(reader, springs.inertia_move_limit); ec) {
++        return ec;
++    }
++    return struct_pack::read(reader, springs.inertia_damping);
+ }
+ 
+ constexpr size_t kBonePartitionCount = 7;
+@@ -896,7 +967,10 @@
+             !finite(joint.tail) || !finite(joint.gravity_dir) ||
+             !finite(scalars) || joint.drag < 0.0f || joint.drag > 1.0f ||
+             joint.limit > SpringLimit::kSpherical ||
+-            !finite(joint.limit_rotation)) {
++            !finite(joint.limit_rotation) ||
++            joint.backstop > springs.body.size() ||
++            !std::isfinite(joint.backstop_allowance) ||
++            joint.sync > springs.body.size() || !std::isfinite(joint.sync_share)) {
+             return Corrupt();
+         }
+     }
+@@ -912,6 +986,62 @@
+         })) {
+         return Corrupt();
+     }
++    if (springs.body.size() > kMaxBodyCapsules) {
++        return Corrupt();
++    }
++    for (const auto& capsule : springs.body) {
++        if (capsule.bone >= bone_count || !finite(capsule.head) ||
++            !finite(capsule.tail) || !std::isfinite(capsule.radius) ||
++            !std::isfinite(capsule.tail_radius)) {
++            return Corrupt();
++        }
++    }
++    if (std::ranges::any_of(springs.links,
++                            [&](const SpringLink& link) {
++                                return link.a >= springs.joints.size() ||
++                                       link.b >= springs.joints.size() ||
++                                       link.a == link.b ||
++                                       !std::isfinite(link.rest) ||
++                                       !std::isfinite(link.allowance);
++                            }) ||
++        !std::isfinite(springs.link_stretch) ||
++        !std::isfinite(springs.link_compression) || springs.link_points > 16 ||
++        !(springs.inertia_turn_limit >= 0.0f) ||
++        !(springs.inertia_move_limit >= 0.0f) ||
++        !(springs.inertia_damping >= 0.0f && springs.inertia_damping <= 1.0f) ||
++        std::isinf(springs.inertia_turn_limit) ||
++        std::isinf(springs.inertia_move_limit)) {
++        return Corrupt();
++    }
++    return OkStatus();
++}
++
++template <simd::Width kWidth>
++absl::Status ValidateAntiClip(const BakedModelMesh<kWidth>& mesh,
++                              const BakedSprings& springs) {
++    const auto& offsets = mesh.anti_clip_offsets;
++    if (offsets.empty()) {
++        return mesh.anti_clip.empty() ? OkStatus() : Corrupt();
++    }
++    if (offsets.size() != mesh.blocks.size() + 1 || offsets.front() != 0 ||
++        offsets.back() != mesh.anti_clip.size() ||
++        !std::ranges::is_sorted(offsets)) {
++        return Corrupt();
++    }
++    const auto capsule_bits = springs.body.size() >= 32
++                                  ? ~uint32_t{0}
++                                  : (uint32_t{1} << springs.body.size()) - 1;
++    for (size_t block = 0; block < mesh.blocks.size(); ++block) {
++        for (auto i = offsets[block]; i < offsets[block + 1]; ++i) {
++            const auto& lane = mesh.anti_clip[i];
++            if (lane.lane >= mesh.blocks[block].vertex_count ||
++                (lane.capsules & ~capsule_bits) != 0 ||
++                !std::isfinite(lane.share) || !std::isfinite(lane.allowance) ||
++                !std::isfinite(lane.margin)) {
++                return Corrupt();
++            }
++        }
++    }
+     return OkStatus();
+ }
+ 
+@@ -923,6 +1053,8 @@
+     YSM_RETURN_IF_ERROR(
+         ValidateSprings(BakedModelSerdeAccess::Springs(model), bones.list.size()));
+     YSM_RETURN_IF_ERROR(ValidateMesh(cubes.mesh, bones));
++    YSM_RETURN_IF_ERROR(
++        ValidateAntiClip(cubes.mesh, BakedModelSerdeAccess::Springs(model)));
+     YSM_RETURN_IF_ERROR(ValidateGroups(cubes.cutout, bones.list.size()));
+     YSM_RETURN_IF_ERROR(
+         ValidateGroups(cubes.cutout_no_culling, bones.list.size()));
+diff -rN handoff/anticlip/native-pristine/modules/gfx/src/renderer/anti_clip.h nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/anti_clip.h
+--- handoff/anticlip/native-pristine/modules/gfx/src/renderer/anti_clip.h	1970-01-01 00:00:00.000000000 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/anti_clip.h	2026-11-19 17:31:05.001699151 +0000
+@@ -0,0 +1,187 @@
++#pragma once
++
++#include <algorithm>
++#include <bit>
++#include <cmath>
++#include <cstdint>
++#include <span>
++
++#include <cglm/mat4.h>
++
++#include "gfx/bake/baked_model.h"
++
++namespace ysm::gfx::renderer {
++// A body proxy capsule (BakedSprings::body) posed for one draw, in the space
++// the skinned vertices come out in. Radii and the allowance unit carry the
++// pose's scale. center and bound: a sphere around the whole capsule.
++struct PosedBodyCapsule {
++    float head[3]{};
++    float axis[3]{};
++    float center[3]{};
++    float bound = 0.0f;
++    float inverse_length_squared = 0.0f;
++    float radius = 0.0f;
++    float radius_delta = 0.0f;
++    float scale = 1.0f;
++    bool valid = false;
++};
++
++// Poses a capsule with a bone's skin matrix (outer model matrix times the
++// bone pose). The scale is the mean length of the matrix's basis columns.
++inline void PoseBodyCapsule(const bake::BodyCapsule& capsule, const mat4 skin,
++                            PosedBodyCapsule& out) noexcept {
++    float head[3];
++    float tail[3];
++    for (int row = 0; row < 3; ++row) {
++        head[row] = skin[0][row] * capsule.head[0] +
++                    skin[1][row] * capsule.head[1] +
++                    skin[2][row] * capsule.head[2] + skin[3][row];
++        tail[row] = skin[0][row] * capsule.tail[0] +
++                    skin[1][row] * capsule.tail[1] +
++                    skin[2][row] * capsule.tail[2] + skin[3][row];
++    }
++    float scale = 0.0f;
++    for (int column = 0; column < 3; ++column) {
++        scale += std::sqrt(skin[column][0] * skin[column][0] +
++                           skin[column][1] * skin[column][1] +
++                           skin[column][2] * skin[column][2]);
++    }
++    scale /= 3.0f;
++    float length_squared = 0.0f;
++    for (int row = 0; row < 3; ++row) {
++        out.head[row] = head[row];
++        out.axis[row] = tail[row] - head[row];
++        length_squared += out.axis[row] * out.axis[row];
++    }
++    out.inverse_length_squared =
++        length_squared > 1e-12f ? 1.0f / length_squared : 0.0f;
++    out.radius = capsule.radius * scale;
++    out.radius_delta = (capsule.tail_radius - capsule.radius) * scale;
++    out.scale = scale;
++    for (int row = 0; row < 3; ++row) {
++        out.center[row] = head[row] + 0.5f * out.axis[row];
++    }
++    out.bound = 0.5f * std::sqrt(length_squared) +
++                std::max(out.radius, out.radius + out.radius_delta);
++    out.valid = std::isfinite(scale) && scale > 0.0f && std::isfinite(out.bound);
++}
++
++// Anti-clip push-out of one skinned vertex: for each capsule of the mask the
++// vertex is more than allowance (model units, its rest depth) inside, it
++// moves share of the excess out along the capsule's radius. With a margin
++// (model units) the move ramps in smoothly (zero slope at the start) over the
++// first 2 * margin of the excess and is the whole excess from there, so
++// neighbouring vertices just beyond their allowance do not jump apart. A
++// vertex at most its rest depth inside every capsule is left bit for bit as
++// skinned.
++inline void PushOutOfBody(std::span<const PosedBodyCapsule> capsules,
++                          uint32_t mask, float share, float allowance,
++                          float margin, float& x, float& y, float& z) noexcept {
++    while (mask != 0) {
++        const auto index = static_cast<size_t>(std::countr_zero(mask));
++        mask &= mask - 1;
++        if (index >= capsules.size()) {
++            break;
++        }
++        const auto& capsule = capsules[index];
++        if (!capsule.valid) {
++            continue;
++        }
++        const float dx = x - capsule.head[0];
++        const float dy = y - capsule.head[1];
++        const float dz = z - capsule.head[2];
++        const float t = std::clamp(
++            (dx * capsule.axis[0] + dy * capsule.axis[1] + dz * capsule.axis[2]) *
++                capsule.inverse_length_squared,
++            0.0f, 1.0f);
++        const float ox = dx - capsule.axis[0] * t;
++        const float oy = dy - capsule.axis[1] * t;
++        const float oz = dz - capsule.axis[2] * t;
++        // Distance from the axis below which the vertex is too deep.
++        const float limit = capsule.radius + capsule.radius_delta * t -
++                            allowance * capsule.scale;
++        const float squared = ox * ox + oy * oy + oz * oz;
++        if (!(limit > 0.0f) || squared >= limit * limit) {
++            continue;
++        }
++        const float distance = std::sqrt(squared);
++        if (distance <= 1e-6f * capsule.scale) {
++            continue;  // on the axis: no radial direction
++        }
++        float excess = limit - distance;
++        const float ramp = 2.0f * margin * capsule.scale;
++        if (excess < ramp) {
++            const float s = excess / ramp;
++            excess *= s * s * (3.0f - 2.0f * s);
++        }
++        const float move = excess / distance * share;
++        x += ox * move;
++        y += oy * move;
++        z += oz * move;
++    }
++}
++
++// Normals stay as skinned. The push is a translation of a few millimetres to
++// centimetres along the body's radius; it does not turn the cloth, whose
++// surface already runs along the body where it is pushed, and a corrected
++// normal would need the vertex's neighbours, which a lane does not have.
++//
++// Push-out of one skinned lane block's soft lanes (x, y, z: the block's
++// skinned lanes). Capsules whose bounding sphere misses the sphere around the
++// lanes are dropped for the whole block first: a block's lanes share their
++// joints and sit together, so most of them test only the capsules nearby.
++inline void PushOutBlock(std::span<const PosedBodyCapsule> capsules,
++                         std::span<const bake::MeshAntiClip> lanes, float* x,
++                         float* y, float* z) noexcept {
++    if (lanes.empty() || capsules.empty()) {
++        return;
++    }
++    uint32_t mask = 0;
++    float cx = 0.0f;
++    float cy = 0.0f;
++    float cz = 0.0f;
++    for (const auto& lane : lanes) {
++        mask |= lane.capsules;
++        cx += x[lane.lane];
++        cy += y[lane.lane];
++        cz += z[lane.lane];
++    }
++    const float inverse = 1.0f / static_cast<float>(lanes.size());
++    cx *= inverse;
++    cy *= inverse;
++    cz *= inverse;
++    float spread = 0.0f;
++    for (const auto& lane : lanes) {
++        const float dx = x[lane.lane] - cx;
++        const float dy = y[lane.lane] - cy;
++        const float dz = z[lane.lane] - cz;
++        spread = std::max(spread, dx * dx + dy * dy + dz * dz);
++    }
++    spread = std::sqrt(spread);
++    uint32_t near = 0;
++    for (auto bits = mask; bits != 0; bits &= bits - 1) {
++        const auto index = static_cast<size_t>(std::countr_zero(bits));
++        if (index >= capsules.size() || !capsules[index].valid) {
++            continue;
++        }
++        const auto& capsule = capsules[index];
++        const float dx = capsule.center[0] - cx;
++        const float dy = capsule.center[1] - cy;
++        const float dz = capsule.center[2] - cz;
++        const float reach = capsule.bound + spread;
++        if (dx * dx + dy * dy + dz * dz < reach * reach) {
++            near |= uint32_t{1} << index;
++        }
++    }
++    if (near == 0) {
++        return;
++    }
++    for (const auto& lane : lanes) {
++        if ((lane.capsules & near) != 0) {
++            PushOutOfBody(capsules, lane.capsules & near, lane.share,
++                          lane.allowance, lane.margin, x[lane.lane],
++                          y[lane.lane], z[lane.lane]);
++        }
++    }
++}
++}  // namespace ysm::gfx::renderer
+diff -rN handoff/anticlip/native-pristine/modules/gfx/src/renderer/render_impl.inc nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/render_impl.inc
+--- handoff/anticlip/native-pristine/modules/gfx/src/renderer/render_impl.inc	2026-11-16 15:05:37.424478286 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/render_impl.inc	2026-11-19 10:47:31.769034993 +0000
+@@ -241,6 +241,7 @@
+     alignas(64) std::array<float, kMaxSlots> skinned_y;
+     alignas(64) std::array<float, kMaxSlots> skinned_z;
+     alignas(64) std::array<uint32_t, kMaxSlots> packed_normal;
++    const auto capsules = render_state.AntiClipCapsules();
+ 
+     for (const auto meshlet_index : task.cube_indices) {
+         const auto& meshlet = meshlets[meshlet_index];
+@@ -317,6 +318,17 @@
+             SkinMeshBlock(tag, block, pos_x, pos_y, pos_z, render_state,
+                           skinned_x.data() + base, skinned_y.data() + base,
+                           skinned_z.data() + base, packed_normal.data() + base);
++            // Anti-clip: soft lanes leave the body proxy beyond their rest
++            // depth. Normals stay as skinned (see anti_clip.h).
++            if (!mesh.anti_clip_offsets.empty() && !capsules.empty()) {
++                const auto global = meshlet.first_block + block_index;
++                const auto first = mesh.anti_clip_offsets[global];
++                PushOutBlock(capsules,
++                             std::span(mesh.anti_clip)
++                                 .subspan(first, mesh.anti_clip_offsets[global + 1] - first),
++                             skinned_x.data() + base, skinned_y.data() + base,
++                             skinned_z.data() + base);
++            }
+         }
+ 
+         const auto light = owner.packed_light;
+diff -rN handoff/anticlip/native-pristine/modules/gfx/src/renderer/render_state.h nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/render_state.h
+--- handoff/anticlip/native-pristine/modules/gfx/src/renderer/render_state.h	2026-11-16 15:05:37.424478286 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/render_state.h	2026-11-19 10:33:37.733857570 +0000
+@@ -9,6 +9,7 @@
+ #include <span>
+ #include <vector>
+ 
++#include "anti_clip.h"
+ #include "gfx/bake/baked_model.h"
+ #include "gfx/renderer/model_state.h"
+ #include "gfx/renderer/render.h"
+@@ -57,6 +58,9 @@
+     size_t worker_ready_size = 0;
+     // Borrowed from the ModelState for the draw; empty when no morph deforms.
+     std::span<const float> morph_weights;
++    // Anti-clip body capsules posed for the draw; empty without push-out.
++    std::vector<PosedBodyCapsule> anti_clip_capsules;
++    size_t anti_clip_capsule_count = 0;
+ 
+ public:
+     template <typename SimdTag>
+@@ -84,6 +88,10 @@
+         return morph_weights;
+     }
+ 
++    [[nodiscard]] std::span<const PosedBodyCapsule> AntiClipCapsules() const {
++        return {anti_clip_capsules.data(), anti_clip_capsule_count};
++    }
++
+     [[nodiscard]] std::span<const WorkerReadyFlag> WorkerReadyFlags() const {
+         return {worker_ready_flags.data(), worker_ready_size};
+     }
+diff -rN handoff/anticlip/native-pristine/modules/gfx/src/renderer/render_state_impl.inc nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/render_state_impl.inc
+--- handoff/anticlip/native-pristine/modules/gfx/src/renderer/render_state_impl.inc	2026-11-16 15:05:37.424478286 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/render_state_impl.inc	2026-11-19 10:33:44.620900257 +0000
+@@ -196,6 +196,28 @@
+         }
+     }
+ 
++    const auto& body = model_state.Model()->Springs().body;
++    anti_clip_capsule_count = body.size();
++    if (!body.empty()) {
++        if (anti_clip_capsules.size() < body.size()) {
++            anti_clip_capsules.resize(body.size());
++        }
++        const auto pose_view = model_state.PoseView();
++        for (size_t index = 0; index < body.size(); ++index) {
++            auto& posed = anti_clip_capsules[index];
++            const auto bone = body[index].bone;
++            if (bone >= pose_view.bone_visited.size() ||
++                pose_view.bone_visited[bone] == 0) {
++                posed.valid = false;
++                continue;
++            }
++            mat4 skin;
++            math::AffineMul(tag, params.model, pose_view.bone_poses[bone].pose,
++                            skin);
++            PoseBodyCapsule(body[index], skin, posed);
++        }
++    }
++
+     return OkStatus();
+ }
+ 
+diff -rN handoff/anticlip/native-pristine/modules/gfx/src/renderer/spring_physics.cc nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/spring_physics.cc
+--- handoff/anticlip/native-pristine/modules/gfx/src/renderer/spring_physics.cc	2026-11-18 05:20:00.934414231 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/gfx/src/renderer/spring_physics.cc	2026-11-20 10:15:32.825730936 +0000
+@@ -17,9 +17,24 @@
+ // tail. Joints run in baked order, so a parent's rotation is in place before
+ // its children step. A chain with a center bone keeps its tails in that
+ // bone's space: the center's motion carries them instead of swinging them.
++// Inertia limits (anti-clip, after MagicaCloth's world rotation / movement
++// speed limits): the model's turn and travel beyond a speed, and a damping
++// share of the rest, carry every tail with the model instead of leaving it
++// behind in the world, so a snap turn does not fling cloth through the body.
+ // Colliders on simulated bones move with the simulation: they are posed as
+ // the previous fixed step left their bones, and a joint never collides with
+-// the colliders its own swing carries.
++// the colliders its own swing carries. A joint with a backstop (anti-clip,
++// after MagicaCloth's) keeps its tail at most an allowance closer to a body
++// proxy capsule's axis than the animated pose puts it, so a swing can follow
++// the body but not sink into it. A joint with a leg sync (anti-clip, after
++// Kawaii Physics' sync bone) has its animated tail moved out by a share of
++// how far a leg would carry its rest tail into it. Linked chains (anti-clip,
++// after Kawaii Physics' bone constraints: neighbouring hem chains) step level
++// by level: the level's joints integrate and collide, links between their
++// tails limit stretch firmly and compression loosely and keep points along
++// them out of the chains' colliders, the tails collide again, the links pull
++// them back into their limits with the bone lengths restored last, and only
++// then do the bones turn; linked joints are drawn at their latest step.
+ namespace ysm::gfx::renderer {
+ namespace {
+ constexpr float kModelUnit = 1.0f / 16.0f;
+@@ -57,6 +72,18 @@
+ // Bone contacts this close to the joint's head are left to the tail test:
+ // turning about the head barely moves them.
+ constexpr float kMinBoneContactShare = 1e-3f;
++// Link passes per level (anti-clip links) before the tails collide again:
++// limits, then points along links.
++constexpr int kLinkIterations = 2;
++// Limit passes per level after that collision, each ending at the bone
++// lengths: the links have the last word, so contacts and colliders that
++// differ between neighbouring chains cannot pull the hem apart; the push-out
++// keeps the cloth itself out of the body.
++constexpr int kLinkFinalPasses = 4;
++// Share of a link's correction a tail in contact with a collider takes
++// relative to a free one, so the free neighbour follows the held tail
++// instead of dragging it back into the collider.
++constexpr float kLinkContactWeight = 0.25f;
+ 
+ using Vec3 = std::array<float, 3>;
+ 
+@@ -246,6 +273,81 @@
+     return Add(Add(v, Scale(t, q[3])), Cross(axis, t));
+ }
+ 
++// The share of an extraction's model motion the tails are left behind by
++// (anti-clip inertia limits, after MagicaCloth's world rotation and movement
++// speed limits): the turn beyond turn_limit * seconds and the travel beyond
++// move_limit * seconds, then damping of what remains, are taken out of it,
++// so that much of the motion carries the tails with the model, as if body
++// and cloth had moved together. The model origin (the root) is the pivot.
++// Motion that is not rigid (a scale change) is kept whole.
++void LimitMotion(const mat4 motion, float seconds, float turn_limit,
++                 float move_limit, float damping, mat4 out) {
++    std::memcpy(out, motion, sizeof(mat4));
++    if (turn_limit <= 0.0f && move_limit <= 0.0f && damping <= 0.0f) {
++        return;
++    }
++    for (int column = 0; column < 3; ++column) {
++        const Vec3 basis{motion[column][0], motion[column][1], motion[column][2]};
++        if (std::abs(Dot(basis, basis) - 1.0f) > 1e-3f) {
++            return;
++        }
++    }
++    const auto keep = 1.0f - damping;
++    // The turn as a unit quaternion xyzw (Shepperd's method, stable near a
++    // half turn), then its angle in [0, pi] about a unit axis.
++    const auto at = [&](int row, int column) { return motion[column][row]; };
++    const auto trace = at(0, 0) + at(1, 1) + at(2, 2);
++    std::array<float, 4> q;
++    if (trace > 0.0f) {
++        const auto s = std::sqrt(trace + 1.0f) * 2.0f;
++        q = {(at(2, 1) - at(1, 2)) / s, (at(0, 2) - at(2, 0)) / s,
++             (at(1, 0) - at(0, 1)) / s, 0.25f * s};
++    } else if (at(0, 0) > at(1, 1) && at(0, 0) > at(2, 2)) {
++        const auto s = std::sqrt(1.0f + at(0, 0) - at(1, 1) - at(2, 2)) * 2.0f;
++        q = {0.25f * s, (at(0, 1) + at(1, 0)) / s, (at(0, 2) + at(2, 0)) / s,
++             (at(2, 1) - at(1, 2)) / s};
++    } else if (at(1, 1) > at(2, 2)) {
++        const auto s = std::sqrt(1.0f + at(1, 1) - at(0, 0) - at(2, 2)) * 2.0f;
++        q = {(at(0, 1) + at(1, 0)) / s, 0.25f * s, (at(1, 2) + at(2, 1)) / s,
++             (at(0, 2) - at(2, 0)) / s};
++    } else {
++        const auto s = std::sqrt(1.0f + at(2, 2) - at(0, 0) - at(1, 1)) * 2.0f;
++        q = {(at(0, 2) + at(2, 0)) / s, (at(1, 2) + at(2, 1)) / s, 0.25f * s,
++             (at(1, 0) - at(0, 1)) / s};
++    }
++    const Vec3 vector{q[0], q[1], q[2]};
++    const auto half_sine = Length(vector);
++    const auto angle = 2.0f * std::atan2(half_sine, std::abs(q[3]));
++    auto turned = angle;
++    if (turn_limit > 0.0f) {
++        turned = std::min(turned, turn_limit * seconds);
++    }
++    turned *= keep;
++    if (turned < angle && half_sine > kEpsilon) {
++        const auto axis = Scale(vector, (q[3] < 0.0f ? -1.0f : 1.0f) / half_sine);
++        mat3 rotation;
++        AxisAngle(axis, std::cos(turned), std::sin(turned), rotation);
++        for (int column = 0; column < 3; ++column) {
++            for (int row = 0; row < 3; ++row) {
++                out[column][row] = rotation[column][row];
++            }
++        }
++    }
++    const Vec3 travel{motion[3][0], motion[3][1], motion[3][2]};
++    const auto distance = Length(travel);
++    auto moved = distance;
++    if (move_limit > 0.0f) {
++        moved = std::min(moved, move_limit * seconds);
++    }
++    moved *= keep;
++    if (moved < distance) {
++        const auto share = distance > kEpsilon ? moved / distance : 0.0f;
++        for (int row = 0; row < 3; ++row) {
++            out[3][row] = motion[3][row] * share;
++        }
++    }
++}
++
+ // A unit direction in limit space moved into the limit's range, as the
+ // VRMC_springBone_limit reference implementations do (singular directions
+ // resolved as the extension requires).
+@@ -330,6 +432,12 @@
+     hash = HashVector(hash, springs.chain_offsets);
+     hash = HashVector(hash, springs.chain_colliders);
+     hash = HashVector(hash, springs.chain_centers);
++    hash = HashVector(hash, springs.body);
++    hash = HashVector(hash, springs.links);
++    hash = HashBytes(hash, &springs.link_stretch, sizeof(springs.link_stretch));
++    hash = HashBytes(hash, &springs.link_compression,
++                     sizeof(springs.link_compression));
++    hash = HashBytes(hash, &springs.link_points, sizeof(springs.link_points));
+     const auto& bones = model.Bones().list;
+     const uint64_t bone_count = bones.size();
+     hash = HashBytes(hash, &bone_count, sizeof(bone_count));
+@@ -385,8 +493,9 @@
+     spring_model_ = baked_model_.get();
+     if (spring_read_bones_.empty()) {
+         // Bones a fixed step reads: joint pivots and limit frames, collider
+-        // bones, centers. aim() also writes the joints' other descendants,
+-        // but nothing reads those before the final restore.
++        // bones, centers, backstop and sync capsules. aim() also writes the
++        // joints' other descendants, but nothing reads those before the
++        // final restore.
+         std::vector<uint8_t> read(bones.size(), 0);
+         for (const auto& joint : joints) {
+             read[joint.bone] = 1;
+@@ -399,11 +508,92 @@
+                 read[center - 1] = 1;
+             }
+         }
++        for (const auto& joint : joints) {
++            if (joint.backstop != 0) {
++                read[springs.body[joint.backstop - 1].bone] = 1;
++            }
++            if (joint.sync != 0) {
++                read[springs.body[joint.sync - 1].bone] = 1;
++            }
++        }
+         for (uint32_t bone = 0; bone < read.size(); ++bone) {
+             if (read[bone] != 0) {
+                 spring_read_bones_.push_back(bone);
+             }
+         }
++        // Links: a joint's level is the number of joints of its chain above
++        // it. Linked chains step level by level at their first joint, so
++        // none may hang below a joint of another chain; links join joints of
++        // one level.
++        spring_link_order_.clear();
++        spring_link_level_offsets_.clear();
++        spring_link_links_.clear();
++        spring_link_link_offsets_.clear();
++        spring_linked_.assign(joints.size(), 0);
++        spring_link_states_.clear();
++        if (!springs.links.empty()) {
++            const auto chain_count = springs.chain_centers.size();
++            std::vector<uint8_t> chain_linked(chain_count, 0);
++            for (const auto& link : springs.links) {
++                chain_linked[joints[link.a].chain] = 1;
++                chain_linked[joints[link.b].chain] = 1;
++            }
++            std::vector<uint32_t> joint_of(bones.size(), UINT32_MAX);
++            for (uint32_t index = 0; index < joints.size(); ++index) {
++                joint_of[joints[index].bone] = index;
++            }
++            std::vector<uint32_t> level(joints.size(), 0);
++            uint32_t levels = 0;
++            bool usable = true;
++            for (uint32_t index = 0; index < joints.size(); ++index) {
++                const auto chain = joints[index].chain;
++                for (auto bone = bones[joints[index].bone].parent_index;
++                     bone < bones.size(); bone = bones[bone].parent_index) {
++                    const auto above = joint_of[bone];
++                    if (above == UINT32_MAX) {
++                        continue;
++                    }
++                    if (joints[above].chain == chain) {
++                        level[index] = level[above] + 1;
++                    } else if (chain_linked[chain] != 0) {
++                        usable = false;
++                    }
++                    break;
++                }
++                if (chain_linked[chain] != 0) {
++                    levels = std::max(levels, level[index] + 1);
++                }
++            }
++            if (usable) {
++                spring_link_first_ = joints.size();
++                spring_link_level_offsets_.push_back(0);
++                spring_link_link_offsets_.push_back(0);
++                for (uint32_t current = 0; current < levels; ++current) {
++                    for (uint32_t index = 0; index < joints.size(); ++index) {
++                        if (chain_linked[joints[index].chain] != 0 &&
++                            level[index] == current) {
++                            spring_link_order_.push_back(index);
++                            spring_linked_[index] = 1;
++                            spring_link_first_ =
++                                std::min<size_t>(spring_link_first_, index);
++                        }
++                    }
++                    spring_link_level_offsets_.push_back(
++                        static_cast<uint32_t>(spring_link_order_.size()));
++                    for (uint32_t link = 0; link < springs.links.size();
++                         ++link) {
++                        const auto& value = springs.links[link];
++                        if (level[value.a] == current &&
++                            level[value.b] == current) {
++                            spring_link_links_.push_back(link);
++                        }
++                    }
++                    spring_link_link_offsets_.push_back(
++                        static_cast<uint32_t>(spring_link_links_.size()));
++                }
++                spring_link_states_.assign(joints.size(), SpringLinkState{});
++            }
++        }
+     }
+     auto& velocity_estimate = spring_body_velocity_;
+     if (reset) {
+@@ -422,14 +612,18 @@
+             }
+         }
+     } else {
++        // The motion the springs feel: beyond the inertia limits the model
++        // carries its tails (and everything below that stands for the body
++        // a step ago) instead of leaving them behind in the world.
++        mat4 motion;
++        LimitMotion(frame.motion, dt, springs.inertia_turn_limit,
++                    springs.inertia_move_limit, springs.inertia_damping, motion);
+         for (auto& tail : spring_tails_) {
+-            tail.current = TransformPoint(frame.motion, tail.current);
+-            tail.previous = TransformPoint(frame.motion, tail.previous);
++            tail.current = TransformPoint(motion, tail.current);
++            tail.previous = TransformPoint(motion, tail.previous);
+         }
+         // The previous extraction's animated poses, moved into this model
+         // space the same way: where the body was then, seen from now.
+-        mat4 motion;
+-        std::memcpy(motion, frame.motion, sizeof(motion));
+         for (auto& previous : spring_previous_poses_) {
+             mat4 moved;
+             glm_mat4_mul(motion, previous.pose, moved);
+@@ -444,14 +638,14 @@
+         }
+         for (auto& ends : spring_collider_ends_) {
+             if (ends.valid) {
+-                ends.head = TransformPoint(frame.motion, ends.head);
+-                ends.tail = TransformPoint(frame.motion, ends.tail);
++                ends.head = TransformPoint(motion, ends.head);
++                ends.tail = TransformPoint(motion, ends.tail);
+             }
+         }
+         mat3 turn;
+         for (int column = 0; column < 3; ++column) {
+             for (int row = 0; row < 3; ++row) {
+-                turn[column][row] = frame.motion[column][row];
++                turn[column][row] = motion[column][row];
+             }
+         }
+         velocity_estimate = Rotate(turn, velocity_estimate);
+@@ -461,8 +655,7 @@
+             const auto weight = std::min(dt / kBodyVelocitySeconds, 1.0f);
+             for (int axis = 0; axis < 3; ++axis) {
+                 velocity_estimate[axis] +=
+-                    (frame.motion[3][axis] / dt - velocity_estimate[axis]) *
+-                    weight;
++                    (motion[3][axis] / dt - velocity_estimate[axis]) * weight;
+             }
+         }
+     }
+@@ -570,9 +763,54 @@
+         head = TransformPoint(pose, collider.head);
+         tail = TransformPoint(pose, collider.tail);
+     };
+-    const auto integrate = [&](size_t index, const Animated& animated) {
++    // The limit space as the bone's current pose turns it.
++    struct LimitFrame {
++        bool limited = false;
++        Vec3 x{1.0f, 0.0f, 0.0f};
++        Vec3 y{0.0f, 1.0f, 0.0f};
++        Vec3 z{0.0f, 0.0f, 1.0f};
++    };
++    const auto limit_frame = [&](const bake::SpringJoint& joint,
++                                 const Animated& animated) {
++        LimitFrame frame;
++        frame.limited = joint.limit != bake::SpringLimit::kNone;
++        if (frame.limited) {
++            mat3 basis;
++            glm_mat4_pick3(bone_poses_[joint.bone].pose, basis);
++            frame.y = Normalize(
++                Rotate(basis, QuatRotate(joint.limit_rotation, frame.y)),
++                animated.direction);
++            frame.z = Normalize(
++                Cross(Rotate(basis, QuatRotate(joint.limit_rotation, frame.x)),
++                      frame.y),
++                frame.z);
++            frame.x = Cross(frame.y, frame.z);
++        }
++        return frame;
++    };
++    // Back at the bone's length about its head, inside its limit.
++    const auto constrain = [&](const bake::SpringJoint& joint,
++                               const Animated& animated,
++                               const LimitFrame& frame, const Vec3& point) {
++        auto direction =
++            Normalize(Sub(point, animated.head), animated.direction);
++        if (frame.limited) {
++            const auto local = LimitDirection(
++                joint.limit, joint.limit_angle, joint.limit_yaw,
++                {Dot(direction, frame.x), Dot(direction, frame.y),
++                 Dot(direction, frame.z)});
++            direction = Add(Add(Scale(frame.x, local[0]),
++                                Scale(frame.y, local[1])),
++                            Scale(frame.z, local[2]));
++        }
++        return Add(animated.head, Scale(direction, animated.length));
++    };
++    // The tail's next position from inertia, stiffness and gravity, at the
++    // bone's length.
++    const auto predict = [&](size_t index, const Animated& animated,
++                             const LimitFrame& frame) {
+         const auto& joint = joints[index];
+-        auto& tail = spring_tails_[index];
++        const auto& tail = spring_tails_[index];
+         const auto keep =
+             std::pow(1.0f - joint.drag, kFixedStepSeconds * kDragReferenceHz);
+         const auto gravity = Rotate(gravity_rotation, joint.gravity_dir);
+@@ -584,57 +822,37 @@
+         const auto velocity =
+             Sub(Scale(Add(Sub(tail.current, tail.previous), drift), keep),
+                 drift);
+-        // The limit space as the bone's current pose turns it.
+-        const bool limited = joint.limit != bake::SpringLimit::kNone;
+-        Vec3 limit_x{1.0f, 0.0f, 0.0f};
+-        Vec3 limit_y{0.0f, 1.0f, 0.0f};
+-        Vec3 limit_z{0.0f, 0.0f, 1.0f};
+-        if (limited) {
+-            mat3 basis;
+-            glm_mat4_pick3(bone_poses_[joint.bone].pose, basis);
+-            limit_y = Normalize(
+-                Rotate(basis, QuatRotate(joint.limit_rotation, limit_y)),
+-                animated.direction);
+-            limit_z = Normalize(
+-                Cross(Rotate(basis, QuatRotate(joint.limit_rotation, limit_x)),
+-                      limit_y),
+-                limit_z);
+-            limit_x = Cross(limit_y, limit_z);
+-        }
+-        // Back at the bone's length about its head, inside its limit.
+-        const auto constrain = [&](const Vec3& point) {
+-            auto direction =
+-                Normalize(Sub(point, animated.head), animated.direction);
+-            if (limited) {
+-                const auto local = LimitDirection(
+-                    joint.limit, joint.limit_angle, joint.limit_yaw,
+-                    {Dot(direction, limit_x), Dot(direction, limit_y),
+-                     Dot(direction, limit_z)});
+-                direction = Add(Add(Scale(limit_x, local[0]),
+-                                    Scale(limit_y, local[1])),
+-                                Scale(limit_z, local[2]));
+-            }
+-            return Add(animated.head, Scale(direction, animated.length));
+-        };
+-        auto next = constrain(Add(
+-            Add(tail.current, velocity),
+-            Add(Scale(animated.direction, joint.stiffness * kFixedStepSeconds),
+-                Scale(gravity, joint.gravity_power * kFixedStepSeconds))));
+-
++        return constrain(
++            joint, animated, frame,
++            Add(Add(tail.current, velocity),
++                Add(Scale(animated.direction,
++                          joint.stiffness * kFixedStepSeconds),
++                    Scale(gravity, joint.gravity_power * kFixedStepSeconds))));
++    };
++    // The directions colliders pushed a tail along in a step.
++    struct Contact {
++        Vec3 normal{};
++        bool touched = false;
++    };
++    // Keeps next and the bone to it out of the chain's colliders and the
++    // joint's backstop, on the side the animated tail is, in up to
++    // kCollisionPasses passes, each ending back at the bone's length.
++    const auto collide = [&](size_t index, const Animated& animated,
++                             const LimitFrame& frame, Vec3& next,
++                             Contact& contact) {
++        const auto& joint = joints[index];
+         const auto first = springs.chain_offsets[joint.chain];
+         const auto last = springs.chain_offsets[joint.chain + 1];
+         const auto subtree_end = bones[joint.bone].subtree_end;
+         const auto animated_tail =
+             Add(animated.head, Scale(animated.direction, animated.length));
+-        Vec3 contact_normal{};
+-        bool contact = false;
+         // A push moved the tail along normal; limited joints go back into
+         // their range right away.
+         const auto pushed_along = [&](const Vec3& normal) {
+-            contact_normal = Add(contact_normal, normal);
+-            contact = true;
+-            if (limited) {
+-                next = constrain(next);
++            contact.normal = Add(contact.normal, normal);
++            contact.touched = true;
++            if (frame.limited) {
++                next = constrain(joint, animated, frame, next);
+             }
+         };
+         for (int pass = 0; pass < kCollisionPasses; ++pass) {
+@@ -733,16 +951,47 @@
+                 pushed = true;
+                 pushed_along(normal);
+             }
+-            next = constrain(next);
++            // Backstop: no closer to the body capsule's axis than the
++            // animated tail less the allowance, pushed out on the animated
++            // side. A capsule this joint's own swing carries is skipped.
++            if (joint.backstop != 0) {
++                const auto& capsule = springs.body[joint.backstop - 1];
++                if (bone_visited_[capsule.bone] != 0 &&
++                    !(capsule.bone >= joint.bone && capsule.bone < subtree_end)) {
++                    const auto& pose = bone_poses_[capsule.bone].pose;
++                    const auto axis_head = TransformPoint(pose, capsule.head);
++                    const auto axis_tail = TransformPoint(pose, capsule.tail);
++                    const auto animated_offset = Sub(
++                        animated_tail,
++                        ClosestOnSegment(animated_tail, axis_head, axis_tail));
++                    const auto minimum =
++                        Length(animated_offset) - joint.backstop_allowance;
++                    const auto closest =
++                        ClosestOnSegment(next, axis_head, axis_tail);
++                    const auto offset = Sub(next, closest);
++                    if (minimum > 0.0f && Length(offset) < minimum) {
++                        const auto normal = PushNormal(offset, animated_offset,
++                                                       animated.direction);
++                        next = Add(closest, Scale(normal, minimum));
++                        pushed = true;
++                        pushed_along(normal);
++                    }
++                }
++            }
++            next = constrain(joint, animated, frame, next);
+             if (!pushed) {
+                 break;
+             }
+         }
++    };
++    // Makes next the tail. After a contact the next step's velocity (next -
++    // previous) keeps only the slide along the surface, slowed by friction.
++    const auto commit = [&](size_t index, const Animated& animated,
++                            const Vec3& next, const Contact& contact) {
++        auto& tail = spring_tails_[index];
+         auto previous = tail.current;
+-        if (contact) {
+-            // The next step's velocity is next - previous: keep only the
+-            // slide along the surface, slowed by friction.
+-            const auto normal = Normalize(contact_normal, animated.direction);
++        if (contact.touched) {
++            const auto normal = Normalize(contact.normal, animated.direction);
+             auto slide = Sub(next, tail.current);
+             slide = Sub(slide, Scale(normal, Dot(slide, normal)));
+             previous = Sub(next, Scale(slide, 1.0f - kContactFriction));
+@@ -751,6 +1000,42 @@
+         tail.current = next;
+         return IsFinite(tail.current) && IsFinite(tail.previous);
+     };
++    const auto integrate = [&](size_t index, const Animated& animated) {
++        const auto frame = limit_frame(joints[index], animated);
++        auto next = predict(index, animated, frame);
++        Contact contact;
++        collide(index, animated, frame, next, contact);
++        return commit(index, animated, next, contact);
++    };
++    // Leg sync: the animated tail moves out by sync_share of how far the
++    // sync capsule's bone would carry the rest tail beyond it, away from the
++    // capsule's axis. Only the direction changes; the bone keeps its length.
++    const auto sync = [&](const bake::SpringJoint& joint, Animated& animated) {
++        if (joint.sync == 0) {
++            return;
++        }
++        const auto& capsule = springs.body[joint.sync - 1];
++        if (bone_visited_[capsule.bone] == 0) {
++            return;
++        }
++        const auto& pose = bone_poses_[capsule.bone].pose;
++        const auto carried = TransformPoint(pose, joint.tail);
++        const auto outward = Normalize(
++            Sub(carried,
++                ClosestOnSegment(carried, TransformPoint(pose, capsule.head),
++                                 TransformPoint(pose, capsule.tail))),
++            Vec3{});
++        const auto animated_tail =
++            Add(animated.head, Scale(animated.direction, animated.length));
++        const auto beyond = Dot(Sub(carried, animated_tail), outward);
++        if (!(beyond > 0.0f)) {
++            return;
++        }
++        animated.direction = Normalize(
++            Sub(Add(animated_tail, Scale(outward, beyond * joint.sync_share)),
++                animated.head),
++            animated.direction);
++    };
+ 
+     spring_accumulator_ += dt;
+     const auto steps =
+@@ -771,6 +1056,227 @@
+         return chain < spring_chain_modes_.size() &&
+                spring_chain_modes_[chain] != 0;
+     };
++    // Linked chains step level by level (see the top of the file). False
++    // when a tail is no longer finite.
++    const auto step_linked = [&]() {
++        auto& states = spring_link_states_;
++        // Pulls a link's tails back to rest * (1 + link_stretch) or pushes
++        // them apart to rest * (1 - link_compression); a tail in contact
++        // takes kLinkContactWeight of a free one's share.
++        const auto limit = [&](const bake::SpringLink& link) {
++            auto& a = states[link.a];
++            auto& b = states[link.b];
++            if (!a.live || !b.live) {
++                return;
++            }
++            const auto delta = Sub(b.next, a.next);
++            const auto length = Length(delta);
++            const auto longest = link.rest * (1.0f + springs.link_stretch);
++            const auto shortest = link.rest * (1.0f - springs.link_compression);
++            float target;
++            if (length > longest) {
++                target = longest;
++            } else if (length < shortest && length > kEpsilon) {
++                target = shortest;
++            } else {
++                return;
++            }
++            const auto weight_a = a.contact ? kLinkContactWeight : 1.0f;
++            const auto weight_b = b.contact ? kLinkContactWeight : 1.0f;
++            const auto correction = Scale(
++                delta, (length - target) / (length * (weight_a + weight_b)));
++            a.next = Add(a.next, Scale(correction, weight_a));
++            b.next = Sub(b.next, Scale(correction, weight_b));
++            a.moved = true;
++            b.moved = true;
++        };
++        // Keeps link_points points evenly along a link out of both chains'
++        // outside colliders (with the hit radius blended along the link) but
++        // for the link's allowance (their rest depth): the ends move by their
++        // lever shares so the point lands there, on the side the animated
++        // link is.
++        const auto keep_out = [&](const bake::SpringLink& link) {
++            auto& a = states[link.a];
++            auto& b = states[link.b];
++            if (!a.live || !b.live) {
++                return;
++            }
++            const auto& joint_a = joints[link.a];
++            const auto& joint_b = joints[link.b];
++            const auto animated_a = Add(a.head, Scale(a.direction, a.length));
++            const auto animated_b = Add(b.head, Scale(b.direction, b.length));
++            const auto carried = [&](uint32_t bone) {
++                return (bone >= joint_a.bone &&
++                        bone < bones[joint_a.bone].subtree_end) ||
++                       (bone >= joint_b.bone &&
++                        bone < bones[joint_b.bone].subtree_end);
++            };
++            const auto a_first =
++                springs.chain_colliders.begin() +
++                springs.chain_offsets[joint_a.chain];
++            const auto a_last = springs.chain_colliders.begin() +
++                                springs.chain_offsets[joint_a.chain + 1];
++            for (int side = 0; side < 2; ++side) {
++                const auto chain = side == 0 ? joint_a.chain : joint_b.chain;
++                if (side == 1 && chain == joint_a.chain) {
++                    break;
++                }
++                for (auto ref = springs.chain_offsets[chain];
++                     ref < springs.chain_offsets[chain + 1]; ++ref) {
++                    const auto collider_index = springs.chain_colliders[ref];
++                    if (side == 1 &&
++                        std::find(a_first, a_last, collider_index) != a_last) {
++                        continue;  // tested with a's chain
++                    }
++                    const auto& collider = colliders[collider_index];
++                    if (collider.type != bake::SpringColliderType::kOutside ||
++                        bone_visited_[collider.bone] == 0 ||
++                        carried(collider.bone)) {
++                        continue;
++                    }
++                    Vec3 axis_head;
++                    Vec3 axis_tail;
++                    collider_ends(collider_index, axis_head, axis_tail);
++                    for (uint32_t point = 1; point <= springs.link_points;
++                         ++point) {
++                        const auto t = static_cast<float>(point) /
++                                       static_cast<float>(springs.link_points + 1);
++                        const auto on_link = Lerp(a.next, b.next, t);
++                        const auto offset = Sub(
++                            on_link,
++                            ClosestOnSegment(on_link, axis_head, axis_tail));
++                        const auto reach =
++                            collider.radius + joint_a.hit_radius +
++                            (joint_b.hit_radius - joint_a.hit_radius) * t -
++                            link.allowance;
++                        const auto distance = Length(offset);
++                        if (distance >= reach) {
++                            continue;
++                        }
++                        const auto animated_point = Lerp(animated_a, animated_b, t);
++                        const auto normal = PushNormal(
++                            offset,
++                            Sub(animated_point,
++                                ClosestOnSegment(animated_point, axis_head,
++                                                 axis_tail)),
++                            a.direction);
++                        const auto move = (reach - distance) /
++                                          ((1.0f - t) * (1.0f - t) + t * t);
++                        a.next = Add(a.next, Scale(normal, move * (1.0f - t)));
++                        b.next = Add(b.next, Scale(normal, move * t));
++                        a.contact_normal = Add(a.contact_normal, normal);
++                        b.contact_normal = Add(b.contact_normal, normal);
++                        a.contact = true;
++                        b.contact = true;
++                        a.moved = true;
++                        b.moved = true;
++                    }
++                }
++            }
++        };
++        for (size_t level = 0; level + 1 < spring_link_level_offsets_.size();
++             ++level) {
++            const auto first_joint = spring_link_level_offsets_[level];
++            const auto last_joint = spring_link_level_offsets_[level + 1];
++            for (auto k = first_joint; k < last_joint; ++k) {
++                const auto index = spring_link_order_[k];
++                auto& state = states[index];
++                state.live = false;
++                state.moved = false;
++                if (spring_tails_[index].holding && held(index)) {
++                    continue;  // HOLD: placed once per extraction, below
++                }
++                Animated animated;
++                if (!begin(index, animated)) {
++                    continue;
++                }
++                state.posed = animated.direction;
++                sync(joints[index], animated);
++                const auto frame = limit_frame(joints[index], animated);
++                auto next = predict(index, animated, frame);
++                Contact contact;
++                collide(index, animated, frame, next, contact);
++                state.head = animated.head;
++                state.direction = animated.direction;
++                state.length = animated.length;
++                state.limited = frame.limited;
++                state.limit_x = frame.x;
++                state.limit_y = frame.y;
++                state.limit_z = frame.z;
++                state.next = next;
++                state.contact_normal = contact.normal;
++                state.contact = contact.touched;
++                state.live = true;
++            }
++            const auto first_link = spring_link_link_offsets_[level];
++            const auto last_link = spring_link_link_offsets_[level + 1];
++            // Moved tails back at their bone lengths (and in their limits);
++            // with collide also out of their colliders again.
++            const auto settle = [&](bool with_collision) {
++                for (auto k = first_joint; k < last_joint; ++k) {
++                    const auto index = spring_link_order_[k];
++                    auto& state = states[index];
++                    if (!state.live || !state.moved) {
++                        continue;
++                    }
++                    const Animated animated{state.head, state.direction,
++                                            state.length};
++                    const LimitFrame frame{state.limited, state.limit_x,
++                                           state.limit_y, state.limit_z};
++                    state.next =
++                        constrain(joints[index], animated, frame, state.next);
++                    if (with_collision) {
++                        Contact contact{state.contact_normal, state.contact};
++                        collide(index, animated, frame, state.next, contact);
++                        state.contact_normal = contact.normal;
++                        state.contact = contact.touched;
++                    }
++                    state.moved = false;
++                }
++            };
++            for (int iteration = 0; iteration < kLinkIterations; ++iteration) {
++                for (auto k = first_link; k < last_link; ++k) {
++                    limit(springs.links[spring_link_links_[k]]);
++                }
++                if (springs.link_points != 0) {
++                    for (auto k = first_link; k < last_link; ++k) {
++                        keep_out(springs.links[spring_link_links_[k]]);
++                    }
++                }
++            }
++            settle(true);
++            for (int pass = 0; pass < kLinkFinalPasses; ++pass) {
++                for (auto k = first_link; k < last_link; ++k) {
++                    limit(springs.links[spring_link_links_[k]]);
++                }
++                settle(false);
++            }
++            for (auto k = first_joint; k < last_joint; ++k) {
++                const auto index = spring_link_order_[k];
++                const auto& state = states[index];
++                if (!state.live) {
++                    continue;
++                }
++                const Animated animated{state.head, state.direction,
++                                        state.length};
++                if (!commit(index, animated, state.next,
++                            Contact{state.contact_normal, state.contact})) {
++                    return false;
++                }
++                aim(joints[index], Animated{state.head, state.posed, state.length},
++                    spring_tails_[index].current);
++            }
++        }
++        return true;
++    };
++    // A tail is no longer finite: restart from the animated pose next step.
++    const auto restart = [&]() {
++        std::copy(spring_animated_poses_.begin(), spring_animated_poses_.end(),
++                  bone_poses_.begin());
++        spring_tails_.clear();
++        spring_previous_poses_.clear();
++    };
++    const bool linking = !spring_link_order_.empty();
+     const bool blend = !reset && steps > 1 &&
+                        spring_previous_poses_.size() == bone_poses_.size() &&
+                        spring_previous_visited_.size() == bone_visited_.size();
+@@ -832,6 +1338,13 @@
+             }
+         }
+         for (size_t index = 0; index < joints.size(); ++index) {
++            if (linking && spring_linked_[index] != 0) {
++                if (index == spring_link_first_ && !step_linked()) {
++                    restart();
++                    return;
++                }
++                continue;
++            }
+             if (spring_tails_[index].holding && held(index)) {
+                 continue;  // HOLD: placed once per extraction, below
+             }
+@@ -839,12 +1352,10 @@
+             if (!begin(index, animated)) {
+                 continue;
+             }
+-            if (!integrate(index, animated)) {
+-                // Restart from the animated pose next step.
+-                std::copy(spring_animated_poses_.begin(),
+-                          spring_animated_poses_.end(), bone_poses_.begin());
+-                spring_tails_.clear();
+-                spring_previous_poses_.clear();
++            auto target = animated;
++            sync(joints[index], target);
++            if (!integrate(index, target)) {
++                restart();
+                 return;
+             }
+             aim(joints[index], animated, spring_tails_[index].current);
+@@ -870,7 +1381,9 @@
+     }
+ 
+     // Draw between the last two steps, by the share of a step not yet
+-    // integrated.
++    // integrated. Linked joints draw their latest step: it holds the links
++    // and was taken against the current pose, while previous is only a
++    // velocity reference after a contact and the step before lags the body.
+     const auto alpha =
+         std::clamp(spring_accumulator_ / kFixedStepSeconds, 0.0f, 1.0f);
+     for (size_t index = 0; index < joints.size(); ++index) {
+@@ -880,8 +1393,10 @@
+             tail.holding = false;
+             continue;
+         }
+-        auto target =
+-            Add(tail.previous, Scale(Sub(tail.current, tail.previous), alpha));
++        auto target = linking && spring_linked_[index] != 0
++                          ? tail.current
++                          : Add(tail.previous,
++                                Scale(Sub(tail.current, tail.previous), alpha));
+         if (held(index)) {
+             // HOLD keeps the tail in the joint's animated frame: entered at
+             // the drawn position, so neither entering nor leaving moves it;
+diff -rN handoff/anticlip/native-pristine/modules/lib-jni/src/bake/bake_model.cc nativebuild/src/YesSteveModel-Native/modules/lib-jni/src/bake/bake_model.cc
+--- handoff/anticlip/native-pristine/modules/lib-jni/src/bake/bake_model.cc	2026-11-18 04:18:06.530480302 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/lib-jni/src/bake/bake_model.cc	2026-11-20 09:52:01.686187466 +0000
+@@ -22,7 +22,10 @@
+ // Baked layout revisions beyond upstream's, above the SIMD type: the Java side
+ // keys the baked model cache on this value, so caches written in an older
+ // layout are not read back. 1: spring limits, collider types, chain centers.
+-constexpr jint kBakedLayoutRevision = 1;
++// 2: anti-clip body capsules, joint backstops, mesh push-out lanes.
++// 3: anti-clip leg sync, links between joints, push-out margins.
++// 4: anti-clip inertia limits.
++constexpr jint kBakedLayoutRevision = 4;
+ }  // namespace
+ 
+ YSM_JNI_ENTRY(
+diff -rN handoff/anticlip/native-pristine/modules/proto/include/proto/asset/model/data/geo_model.proto.h nativebuild/src/YesSteveModel-Native/modules/proto/include/proto/asset/model/data/geo_model.proto.h
+--- handoff/anticlip/native-pristine/modules/proto/include/proto/asset/model/data/geo_model.proto.h	2026-11-18 04:16:58.506909177 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/proto/include/proto/asset/model/data/geo_model.proto.h	2026-11-20 09:51:36.449033085 +0000
+@@ -88,8 +88,16 @@
+ 	std::vector<float>limit_rotation;
+ 	float limit_angle = 0;
+ 	float limit_yaw = 0;
++	// Anti-clip backstop: SpringBones.body index + 1 (0 none) and how much closer
++	// to its axis than the animated pose the tail may come, model units.
++	uint32_t backstop = 0;
++	float backstop_allowance = 0;
++	// Anti-clip leg sync: SpringBones.body index + 1 (0 none) whose bone carries
++	// the rest tail; the animated tail moves out by sync_share of the outward part.
++	uint32_t sync = 0;
++	float sync_share = 0;
+ };
+-YLT_REFL(SpringJoint, bone, tail, hit_radius, stiffness, drag, gravity_power, gravity_dir, chain, limit, limit_rotation, limit_angle, limit_yaw);
++YLT_REFL(SpringJoint, bone, tail, hit_radius, stiffness, drag, gravity_power, gravity_dir, chain, limit, limit_rotation, limit_angle, limit_yaw, backstop, backstop_allowance, sync, sync_share);
+ 
+ struct SpringCollider : public iguana::base_impl<SpringCollider>  {
+ 	SpringCollider() = default;
+@@ -112,14 +120,62 @@
+ };
+ YLT_REFL(SpringChain, colliders, center);
+ 
++// Anti-clip body proxy capsule carried by a bone; radius at head, tail_radius
++// at tail, linear in between.
++struct BodyCapsule : public iguana::base_impl<BodyCapsule>  {
++	BodyCapsule() = default;
++	BodyCapsule(uint32_t a, std::vector<float> b, std::vector<float> c, float d, float e) : bone(a), head(std::move(b)), tail(std::move(c)), radius(d), tail_radius(e) {}
++	uint32_t bone = 0;
++	std::vector<float>head;
++	std::vector<float>tail;
++	float radius = 0;
++	float tail_radius = 0;
++};
++YLT_REFL(BodyCapsule, bone, head, tail, radius, tail_radius);
++
++// Anti-clip distance limit between two joints' tails (GeoModel.bones indices
++// of the joints' bones), rest distance in model units, and how deep points
++// along it may come into a collider before they are pushed out.
++struct SpringLink : public iguana::base_impl<SpringLink>  {
++	SpringLink() = default;
++	SpringLink(uint32_t a_, uint32_t b_, float c, float d = 0) : a(a_), b(b_), rest(c), allowance(d) {}
++	uint32_t a = 0;
++	uint32_t b = 0;
++	float rest = 0;
++	float allowance = 0;
++};
++YLT_REFL(SpringLink, a, b, rest, allowance);
++
+ struct SpringBones : public iguana::base_impl<SpringBones>  {
+ 	SpringBones() = default;
+ 	SpringBones(std::vector<SpringJoint> a, std::vector<SpringCollider> b, std::vector<SpringChain> c) : joints(std::move(a)), colliders(std::move(b)), chains(std::move(c)) {}
+ 	std::vector<SpringJoint>joints;
+ 	std::vector<SpringCollider>colliders;
+ 	std::vector<SpringChain>chains;
++	// Anti-clip body proxy (at most 32 capsules).
++	std::vector<BodyCapsule>body;
++	// Post-skinning push-out per SkinnedMesh vertex; all empty for none.
++	std::vector<float>push_share;
++	std::vector<float>push_allowance;
++	std::vector<uint32_t>push_capsules;
++	// Anti-clip links between joints' tails and their limits: stretch and
++	// compression shares of the rest distance, points per link kept out of the
++	// chains' colliders.
++	std::vector<SpringLink>links;
++	float link_stretch = 0;
++	float link_compression = 0;
++	uint32_t link_points = 0;
++	// Soft push-out start per SkinnedMesh vertex, model units; empty for none.
++	std::vector<float>push_margin;
++	// Inertia limits (anti-clip): per second, the model's turn beyond
++	// inertia_turn_limit radians and its travel beyond inertia_move_limit
++	// model units, and inertia_damping of the rest, carry the spring tails
++	// with the model instead of leaving them behind. 0: no limit, full inertia.
++	float inertia_turn_limit = 0;
++	float inertia_move_limit = 0;
++	float inertia_damping = 0;
+ };
+-YLT_REFL(SpringBones, joints, colliders, chains);
++YLT_REFL(SpringBones, joints, colliders, chains, body, push_share, push_allowance, push_capsules, links, link_stretch, link_compression, link_points, push_margin, inertia_turn_limit, inertia_move_limit, inertia_damping);
+ 
+ struct GeoModel : public iguana::base_impl<GeoModel>  {
+ 	GeoModel() = default;
+diff -rN handoff/anticlip/native-pristine/modules/test/src/anti_clip_test.cc nativebuild/src/YesSteveModel-Native/modules/test/src/anti_clip_test.cc
+--- handoff/anticlip/native-pristine/modules/test/src/anti_clip_test.cc	1970-01-01 00:00:00.000000000 +0000
++++ nativebuild/src/YesSteveModel-Native/modules/test/src/anti_clip_test.cc	2026-11-20 10:03:53.738579508 +0000
+@@ -0,0 +1,661 @@
++#include <array>
++#include <chrono>
++#include <cmath>
++#include <cstdint>
++#include <cstdio>
++#include <cstdlib>
++#include <cstring>
++#include <limits>
++#include <memory>
++#include <string>
++#include <vector>
++
++#include <cglm/affine.h>
++#include <gtest/gtest.h>
++#include <ylt/struct_pb.hpp>
++
++#include "buffer.h"
++#include "cpu.h"
++#include "gfx/bake/baked_model.h"
++#include "gfx/bake/baked_serializer.h"
++#include "gfx/renderer/model_state.h"
++#include "gfx/renderer/render.h"
++#include "proto/asset/model/data/geo_model.proto.h"
++#include "renderer/anti_clip.h"
++#include "renderer/vertex/vanilla.h"
++
++namespace ysm::test {
++namespace {
++namespace model_proto = proto::asset::model::data;
++constexpr simd::Tag<simd::Type::kNone> kGenericTag;
++
++std::string ReadFile(const char* path) {
++    std::string data;
++    FILE* file = std::fopen(path, "rb");
++    if (file == nullptr) {
++        return data;
++    }
++    char buffer[1 << 16];
++    size_t read;
++    while ((read = std::fread(buffer, 1, sizeof(buffer), file)) > 0) {
++        data.append(buffer, read);
++    }
++    std::fclose(file);
++    return data;
++}
++
++std::shared_ptr<gfx::bake::BakedModel> BakeOpaque(const model_proto::GeoModel& model) {
++    std::array<gfx::bake::Pixel, 4> pixels{};
++    for (auto& pixel : pixels) {
++        pixel = {255, 255, 255, 255};
++    }
++    gfx::bake::Texture texture(pixels.data(), 2, 2);
++    std::string protobuf;
++    struct_pb::to_pb(model, protobuf);
++    auto baked = gfx::bake::BakeModel(StrBuf(protobuf), texture, {.origin_ver = 29});
++    EXPECT_TRUE(baked.ok()) << baked.status();
++    return baked.ok() ? std::shared_ptr<gfx::bake::BakedModel>(std::move(*baked)) : nullptr;
++}
++
++gfx::renderer::RenderParameters IdentityParameters() {
++    gfx::renderer::RenderParameters parameters{};
++    glm_mat4_identity(parameters.model);
++    glm_mat4_identity(parameters.view);
++    glm_mat4_identity(parameters.projection);
++    glm_mat3_identity(parameters.normal);
++    parameters.ctx = gfx::renderer::RenderContext::kLevel;
++    parameters.light = 0x00f000f0;
++    parameters.color.packed = 0xffffffff;
++    return parameters;
++}
++
++// Offline anti-clip harness (tools/anticlip/harness.py). Replays a pose stream
++// on an imported model through the real extraction (springs included) and
++// render path, and writes every drawn vertex's position by source index (the
++// UVs carry the index) plus the bone poses.
++//
++// YSM_ANTICLIP_MODEL: GeoModel protobuf. YSM_ANTICLIP_POSES: int32 magic,
++// bones, frames; per frame float32 measure, the 21 PhysicsFrame floats, then
++// rotation, position, scale per bone. YSM_ANTICLIP_OUT: per measured frame
++// float32 bone poses (16 per bone, original order, NaN when not posed),
++// positions (3 per vertex, NaN when not drawn), extract and render
++// milliseconds.
++TEST(AntiClipTest, Replay) {
++    const auto* model_path = std::getenv("YSM_ANTICLIP_MODEL");
++    const auto* poses_path = std::getenv("YSM_ANTICLIP_POSES");
++    const auto* out_path = std::getenv("YSM_ANTICLIP_OUT");
++    if (model_path == nullptr || poses_path == nullptr || out_path == nullptr) {
++        GTEST_SKIP() << "YSM_ANTICLIP_MODEL / _POSES / _OUT not set";
++    }
++    InitCpuInfo();
++    const auto protobuf = ReadFile(model_path);
++    ASSERT_FALSE(protobuf.empty());
++    model_proto::GeoModel model;
++    struct_pb::from_pb(model, protobuf);
++    ASSERT_TRUE(model.mesh.has_value());
++    auto& mesh = *model.mesh;
++    const auto vertex_count = mesh.positions.size() / 3;
++    for (size_t vertex = 0; vertex < vertex_count; ++vertex) {
++        mesh.uvs[vertex * 2] = static_cast<float>(vertex);
++        mesh.uvs[vertex * 2 + 1] = 0.5f;
++    }
++    const auto baked = BakeOpaque(model);
++    ASSERT_NE(baked, nullptr);
++    const auto& sorted = baked->Bones().sorted_bone_indices;
++    const auto bone_count = model.bones.size();
++
++    const auto poses = ReadFile(poses_path);
++    ASSERT_GE(poses.size(), 12U);
++    int32_t header[3];
++    std::memcpy(header, poses.data(), sizeof(header));
++    ASSERT_EQ(header[0], 0x53504341);  // "ACPS"
++    ASSERT_EQ(static_cast<size_t>(header[1]), bone_count);
++    const size_t frame_floats = 1 + gfx::renderer::PhysicsFrame::kFloatCount + bone_count * 9;
++    ASSERT_EQ(poses.size(), 12 + static_cast<size_t>(header[2]) * frame_floats * 4);
++    const auto* stream = reinterpret_cast<const float*>(poses.data() + 12);
++
++    FILE* out = std::fopen(out_path, "wb");
++    ASSERT_NE(out, nullptr);
++    std::vector<gfx::renderer::BoneAttribute> attributes(bone_count);
++    gfx::renderer::ModelState state;
++    std::vector<Byte> buffer;
++    std::vector<float> record(bone_count * 16 + vertex_count * 3 + 2);
++    const auto nan = std::numeric_limits<float>::quiet_NaN();
++    for (int32_t frame_index = 0; frame_index < header[2]; ++frame_index) {
++        const auto* frame = stream + frame_index * frame_floats;
++        const auto physics = gfx::renderer::PhysicsFrame::Unpack(
++            std::span<const float, gfx::renderer::PhysicsFrame::kFloatCount>(frame + 1, 21));
++        const auto* values = frame + 1 + gfx::renderer::PhysicsFrame::kFloatCount;
++        // Attributes come in baked (sorted) bone order, like the Java side's.
++        for (size_t baked_index = 0; baked_index < bone_count; ++baked_index) {
++            auto& attribute = attributes[baked_index];
++            const auto* bone = values + sorted[baked_index] * 9;
++            for (int axis = 0; axis < 3; ++axis) {
++                attribute.rotation[axis] = bone[axis];
++                attribute.position[axis] = bone[3 + axis];
++                attribute.scale[axis] = bone[6 + axis];
++            }
++        }
++        const auto start = std::chrono::steady_clock::now();
++        auto extracted = state.Extract(kGenericTag, baked, attributes, attributes.size(), &physics);
++        ASSERT_TRUE(extracted.ok()) << extracted.status();
++        const auto extracted_at = std::chrono::steady_clock::now();
++        buffer.resize(extracted->vertex_count * gfx::renderer::vertex::VanillaVertex::kSize);
++        const auto status = gfx::renderer::Render(buffer, gfx::renderer::VertexKind::kVanilla, state,
++                                                  IdentityParameters());
++        ASSERT_TRUE(status.ok()) << status;
++        const auto rendered_at = std::chrono::steady_clock::now();
++        if (frame[0] == 0.0f) {
++            continue;
++        }
++        std::fill(record.begin(), record.end(), nan);
++        const auto view = state.PoseView();
++        for (size_t baked_index = 0; baked_index < sorted.size(); ++baked_index) {
++            if (view.bone_visited[baked_index] != 0) {
++                std::memcpy(&record[sorted[baked_index] * 16], &view.bone_poses[baked_index].pose[0][0],
++                            16 * sizeof(float));
++            }
++        }
++        auto* positions = record.data() + bone_count * 16;
++        for (uint32_t i = 0; i < extracted->vertex_count; ++i) {
++            gfx::renderer::vertex::VanillaVertex vertex;
++            std::memcpy(&vertex, buffer.data() + i * gfx::renderer::vertex::VanillaVertex::kSize,
++                        gfx::renderer::vertex::VanillaVertex::kSize);
++            const auto source = static_cast<size_t>(vertex.tex_uv[0]);
++            if (vertex.tex_uv[1] != 0.5f || source >= vertex_count) {
++                continue;  // collapsed quad (hidden joint)
++            }
++            std::memcpy(positions + source * 3, vertex.pos, 3 * sizeof(float));
++        }
++        record[record.size() - 2] =
++            std::chrono::duration<float, std::milli>(extracted_at - start).count();
++        record[record.size() - 1] =
++            std::chrono::duration<float, std::milli>(rendered_at - extracted_at).count();
++        ASSERT_EQ(std::fwrite(record.data(), sizeof(float), record.size(), out), record.size());
++    }
++    std::fclose(out);
++}
++
++gfx::renderer::PosedBodyCapsule UprightCapsule(float radius) {
++    gfx::bake::BodyCapsule capsule{.bone = 0, .head = {0, 0, 0}, .tail = {0, 2, 0},
++                                   .radius = radius, .tail_radius = radius};
++    mat4 identity = GLM_MAT4_IDENTITY_INIT;
++    gfx::renderer::PosedBodyCapsule posed;
++    gfx::renderer::PoseBodyCapsule(capsule, identity, posed);
++    return posed;
++}
++
++TEST(AntiClipTest, PushesOnlyBeyondTheRestDepth) {
++    const std::array capsules{UprightCapsule(0.5f)};
++    // 0.3 deep with 0.1 allowed: out to 0.4 from the axis.
++    float x = 0.2f, y = 1.0f, z = 0.0f;
++    gfx::renderer::PushOutOfBody(capsules, 1, 1.0f, 0.1f, 0.0f, x, y, z);
++    EXPECT_NEAR(x, 0.4f, 1e-6f);
++    EXPECT_EQ(y, 1.0f);
++    EXPECT_EQ(z, 0.0f);
++    // Half the share moves half the excess.
++    x = 0.2f;
++    gfx::renderer::PushOutOfBody(capsules, 1, 0.5f, 0.1f, 0.0f, x, y, z);
++    EXPECT_NEAR(x, 0.3f, 1e-6f);
++    // Within the allowance and outside the mask: bit for bit unchanged.
++    const float inside = 0.45f;
++    x = inside;
++    gfx::renderer::PushOutOfBody(capsules, 1, 1.0f, 0.1f, 0.0f, x, y, z);
++    EXPECT_EQ(std::memcmp(&x, &inside, sizeof(float)), 0);
++    x = 0.2f;
++    gfx::renderer::PushOutOfBody(capsules, 2, 1.0f, 0.0f, 0.0f, x, y, z);
++    EXPECT_EQ(x, 0.2f);
++    // A scaled pose scales the radius and the allowance.
++    gfx::bake::BodyCapsule capsule{.bone = 0, .head = {0, 0, 0}, .tail = {0, 2, 0},
++                                   .radius = 0.5f, .tail_radius = 0.5f};
++    mat4 scaled = GLM_MAT4_IDENTITY_INIT;
++    glm_scale_uni(scaled, 2.0f);
++    std::array<gfx::renderer::PosedBodyCapsule, 1> big;
++    gfx::renderer::PoseBodyCapsule(capsule, scaled, big[0]);
++    x = 0.4f;
++    y = 2.0f;
++    gfx::renderer::PushOutOfBody(big, 1, 1.0f, 0.1f, 0.0f, x, y, z);
++    EXPECT_NEAR(x, 0.8f, 1e-6f);
++}
++
++TEST(AntiClipTest, PushRampsInOverTheMargin) {
++    const std::array capsules{UprightCapsule(0.5f)};
++    // Limit 0.4 from the axis (allowance 0.1), ramp 2 * 0.05 = 0.1 deep.
++    const auto pushed = [&](float from) {
++        float x = from, y = 1.0f, z = 0.0f;
++        gfx::renderer::PushOutOfBody(capsules, 1, 1.0f, 0.1f, 0.05f, x, y, z);
++        return x;
++    };
++    // Within the allowance: bit for bit unchanged.
++    const float inside = 0.45f;
++    const float kept = pushed(inside);
++    EXPECT_EQ(std::memcmp(&kept, &inside, sizeof(float)), 0);
++    // Past the ramp: all the way out to the limit.
++    EXPECT_NEAR(pushed(0.2f), 0.4f, 1e-6f);
++    // In the ramp: part of the excess, more the deeper, never past the limit.
++    const float shallow = pushed(0.38f);
++    const float deeper = pushed(0.34f);
++    EXPECT_GT(shallow, 0.38f);
++    EXPECT_LT(shallow, 0.4f);
++    EXPECT_LT(shallow - 0.38f, 0.02f * 0.5f);
++    EXPECT_GT(deeper - 0.34f, shallow - 0.38f);
++    EXPECT_LE(deeper, 0.4f);
++    // Continuous where the ramp ends.
++    EXPECT_NEAR(pushed(0.3001f), pushed(0.2999f), 1e-3f);
++}
++
++// Two pendulums one block long hang from (0, 2, 0) (A) and (-0.5, 2, 0) (B);
++// their tips' pivots are the tails. A "leg" bone carries a sphere at
++// (-0.35, 1, 0), radius 0.3, in A's chain only, so moving the leg +X pushes
++// A's tail away from B. A link holds the tails within 1.1 of their rest
++// distance; leg sync moves A's target out with a body capsule on the leg.
++model_proto::GeoModel MakePendulumPair(bool link, bool sync) {
++    model_proto::GeoModel model;
++    model.bones.resize(6);
++    const char* names[] = {"root", "a", "a_tip", "b", "b_tip", "leg"};
++    const float pivots[][3] = {{0, 0, 0}, {0, 32, 0}, {0, 16, 0}, {-8, 32, 0}, {-8, 16, 0}, {0, 0, 0}};
++    const char* parents[] = {"", "root", "a", "root", "b", "root"};
++    for (size_t i = 0; i < model.bones.size(); ++i) {
++        model.bones[i].name = names[i];
++        if (i != 0) {
++            model.bones[i].parent = parents[i];
++        }
++        model.bones[i].pivot = {pivots[i][0], pivots[i][1], pivots[i][2]};
++        model.bones[i].rotate = {0, 0, 0};
++    }
++    auto& springs = model.springs.emplace();
++    springs.chains.resize(2);
++    springs.joints.push_back(
++        model_proto::SpringJoint(1, {0, 1, 0}, 0.0f, 2.0f, 0.4f, 1.0f, {0, -1, 0}, 0));
++    springs.joints.push_back(
++        model_proto::SpringJoint(3, {-0.5f, 1, 0}, 0.0f, 2.0f, 0.4f, 1.0f, {0, -1, 0}, 1));
++    springs.colliders.emplace_back(5, std::vector<float>{-0.35f, 1, 0},
++                                   std::vector<float>{-0.35f, 1, 0}, 0.3f);
++    springs.chains[0].colliders = {0};
++    if (link) {
++        springs.links.emplace_back(1, 3, 0.5f);
++        springs.link_stretch = 0.1f;
++        springs.link_compression = 0.35f;
++    }
++    springs.body.emplace_back(5, std::vector<float>{-0.3f, 0.5f, 0}, std::vector<float>{-0.3f, 1.5f, 0},
++                              0.1f, 0.1f);
++    if (sync) {
++        springs.joints[0].sync = 1;
++        springs.joints[0].sync_share = 1.0f;
++    }
++    return model;
++}
++
++// Tail positions (x of A's and B's tip pivots) after 120 frames at 60 Hz with
++// the leg moved leg_x blocks along +X.
++std::array<float, 2> PendulumTails(const model_proto::GeoModel& model, float leg_x) {
++    const auto baked = BakeOpaque(model);
++    EXPECT_NE(baked, nullptr);
++    std::vector<gfx::renderer::BoneAttribute> attributes(6);
++    for (auto& attribute : attributes) {
++        attribute.scale[0] = attribute.scale[1] = attribute.scale[2] = 1.0f;
++    }
++    const auto& sorted = baked->Bones().sorted_bone_indices;
++    const auto baked_index = [&](uint16_t original) {
++        size_t index = 0;
++        while (sorted[index] != original) {
++            ++index;
++        }
++        return index;
++    };
++    attributes[baked_index(5)].position[0] = -leg_x * 16.0f;  // +X
++    gfx::renderer::ModelState state;
++    gfx::renderer::PhysicsFrame frame;
++    frame.delta_seconds = 1.0f / 60.0f;
++    for (int i = 0; i < 120; ++i) {
++        EXPECT_TRUE(state.Extract(kGenericTag, baked, attributes, attributes.size(), &frame).ok());
++    }
++    std::array<float, 2> out{};
++    for (int side = 0; side < 2; ++side) {
++        const auto& pose = state.PoseView().bone_poses[baked_index(side == 0 ? 2 : 4)].pose;
++        const float rest_x = side == 0 ? 0.0f : -0.5f;
++        out[side] = pose[0][0] * rest_x + pose[1][0] * 1.0f + pose[3][0];
++    }
++    return out;
++}
++
++TEST(AntiClipTest, LinksKeepNeighbouringTailsTogether) {
++    InitCpuInfo();
++    // At rest the links change nothing.
++    const auto rest_free = PendulumTails(MakePendulumPair(false, false), 0.0f);
++    const auto rest_linked = PendulumTails(MakePendulumPair(true, false), 0.0f);
++    EXPECT_EQ(std::memcmp(rest_free.data(), rest_linked.data(), sizeof(rest_free)), 0);
++    EXPECT_NEAR(rest_free[0] - rest_free[1], 0.5f, 1e-3f);
++    // The leg pushes A 0.25 away from B: alone the gap opens, linked B follows.
++    const auto free = PendulumTails(MakePendulumPair(false, false), 0.3f);
++    const auto linked = PendulumTails(MakePendulumPair(true, false), 0.3f);
++    EXPECT_GT(free[0] - free[1], 0.7f);
++    EXPECT_LT(linked[0] - linked[1], 0.62f);
++    EXPECT_GT(linked[1], -0.45f);
++    // The baked cache keeps the links.
++    const auto baked = BakeOpaque(MakePendulumPair(true, false));
++    auto restored = gfx::bake::ReadBakedModel(gfx::bake::SerializeBakedModel(*baked));
++    ASSERT_TRUE(restored.ok()) << restored.status();
++    EXPECT_EQ((*restored)->Springs().links.size(), 1U);
++    EXPECT_EQ((*restored)->Springs().link_stretch, 0.1f);
++}
++
++TEST(AntiClipTest, LinksHoldAgainstAColliderBetweenTheTails) {
++    InitCpuInfo();
++    // A collider both chains test sits between the tails and pushes them
++    // apart (0.35 from its centre each, 0.7 apart): alone they stay out of it,
++    // linked the links have the last word and keep them within rest * 1.1.
++    const auto between = [](bool link) {
++        auto model = MakePendulumPair(link, false);
++        auto& collider = model.springs->colliders[0];
++        collider.head = {-0.25f, 1, 0};
++        collider.tail = {-0.25f, 1, 0};
++        collider.radius = 0.35f;
++        model.springs->chains[1].colliders = {0};
++        return PendulumTails(model, 0.0f);
++    };
++    const auto free = between(false);
++    const auto linked = between(true);
++    EXPECT_GT(free[0] - free[1], 0.65f);
++    EXPECT_LT(linked[0] - linked[1], 0.5f * 1.1f + 0.01f);
++}
++
++TEST(AntiClipTest, SyncMovesTheTargetOutWithTheLeg) {
++    InitCpuInfo();
++    // Without the collider in the way (leg moved away from A at rest), sync
++    // keeps A's tail at its rest distance from the moved capsule.
++    auto plain = MakePendulumPair(false, false);
++    auto synced = MakePendulumPair(false, true);
++    plain.springs->chains[0].colliders.clear();
++    synced.springs->chains[0].colliders.clear();
++    EXPECT_EQ(std::memcmp(PendulumTails(plain, 0.0f).data(), PendulumTails(synced, 0.0f).data(),
++                          2 * sizeof(float)),
++              0);
++    const auto moved_plain = PendulumTails(plain, 0.2f);
++    const auto moved_synced = PendulumTails(synced, 0.2f);
++    EXPECT_LT(std::abs(moved_plain[0]), 0.02f);
++    EXPECT_GT(moved_synced[0], 0.08f);
++    // B has no sync.
++    EXPECT_EQ(moved_plain[1], moved_synced[1]);
++}
++
++TEST(AntiClipTest, RejectsMalformedLinks) {
++    InitCpuInfo();
++    std::array<gfx::bake::Pixel, 4> pixels{};
++    gfx::bake::Texture texture(pixels.data(), 2, 2);
++    const auto bakes = [&](const model_proto::GeoModel& model) {
++        std::string protobuf;
++        struct_pb::to_pb(model, protobuf);
++        return gfx::bake::BakeModel(StrBuf(protobuf), texture, {.origin_ver = 29}).ok();
++    };
++    EXPECT_TRUE(bakes(MakePendulumPair(true, true)));
++    auto model = MakePendulumPair(true, false);
++    model.springs->links[0].b = 2;  // not a joint's bone
++    EXPECT_FALSE(bakes(model));
++    model = MakePendulumPair(true, false);
++    model.springs->links[0].b = 1;  // itself
++    EXPECT_FALSE(bakes(model));
++    model = MakePendulumPair(true, false);
++    model.springs->link_compression = 1.5f;
++    EXPECT_FALSE(bakes(model));
++    model = MakePendulumPair(false, true);
++    model.springs->joints[0].sync = 2;  // no capsule 1
++    EXPECT_FALSE(bakes(model));
++}
++
++// "root"; "body" carries an upright capsule of radius 0.5 blocks from the
++// origin to 2 blocks up; "cloth" (its own bone) carries a triangle at x = 0.6.
++model_proto::GeoModel MakeClothBesideBody(bool anti_clip) {
++    model_proto::GeoModel model;
++    model.bones.resize(3);
++    model.bones[0].name = "root";
++    model.bones[1].name = "body";
++    model.bones[1].parent = "root";
++    model.bones[2].name = "cloth";
++    model.bones[2].parent = "root";
++    for (auto& bone : model.bones) {
++        bone.pivot = {0, 0, 0};
++        bone.rotate = {0, 0, 0};
++    }
++    auto& mesh = model.mesh.emplace();
++    mesh.positions = {0.6f, 0.5f, 0.0f, 0.6f, 1.5f, 0.0f, 0.6f, 1.0f, 0.1f};
++    mesh.normals = {1, 0, 0, 1, 0, 0, 1, 0, 0};
++    mesh.uvs = {0, 0, 1, 0, 0, 1};
++    mesh.joints = {2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
++    mesh.weights = {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0};
++    mesh.triangles = {0, 1, 2};
++    auto& springs = model.springs.emplace();
++    if (anti_clip) {
++        springs.body.emplace_back(1, std::vector<float>{0, 0, 0}, std::vector<float>{0, 2, 0},
++                                  0.5f, 0.5f);
++        springs.push_share = {1.0f, 1.0f, 1.0f};
++        springs.push_allowance = {0.0f, 0.0f, 0.0f};
++        springs.push_capsules = {1, 1, 1};
++    }
++    return model;
++}
++
++std::vector<gfx::renderer::vertex::VanillaVertex> Draw(
++    const std::shared_ptr<gfx::bake::BakedModel>& baked, float cloth_shift) {
++    std::vector<gfx::renderer::BoneAttribute> attributes(3);
++    for (auto& attribute : attributes) {
++        attribute.scale[0] = attribute.scale[1] = attribute.scale[2] = 1.0f;
++    }
++    attributes[2].position[0] = cloth_shift * 16.0f;  // moves -X
++    gfx::renderer::ModelState state;
++    auto extracted = state.Extract(kGenericTag, baked, attributes, attributes.size());
++    EXPECT_TRUE(extracted.ok()) << extracted.status();
++    std::vector<Byte> output(extracted->vertex_count * gfx::renderer::vertex::VanillaVertex::kSize);
++    EXPECT_TRUE(gfx::renderer::Render(output, gfx::renderer::VertexKind::kVanilla, state,
++                                      IdentityParameters())
++                    .ok());
++    std::vector<gfx::renderer::vertex::VanillaVertex> vertices(extracted->vertex_count);
++    std::memcpy(vertices.data(), output.data(), output.size());
++    return vertices;
++}
++
++TEST(AntiClipTest, RenderPushesSkinnedClothOutAndKeepsTheRestPose) {
++    InitCpuInfo();
++    const auto plain = BakeOpaque(MakeClothBesideBody(false));
++    const auto guarded = BakeOpaque(MakeClothBesideBody(true));
++    ASSERT_NE(plain, nullptr);
++    ASSERT_NE(guarded, nullptr);
++    // Rest: identical output.
++    const auto rest_plain = Draw(plain, 0.0f);
++    const auto rest_guarded = Draw(guarded, 0.0f);
++    ASSERT_EQ(rest_plain.size(), rest_guarded.size());
++    EXPECT_EQ(std::memcmp(rest_plain.data(), rest_guarded.data(),
++                          rest_plain.size() * sizeof(rest_plain[0])),
++              0);
++    // The cloth moves 0.3 into the body: the guarded copy stays on its surface.
++    const auto moved_plain = Draw(plain, 0.3f);
++    const auto moved_guarded = Draw(guarded, 0.3f);
++    for (size_t i = 0; i < moved_plain.size(); ++i) {
++        EXPECT_NEAR(moved_plain[i].pos[0], 0.3f, 1e-5f);
++        EXPECT_NEAR(std::hypot(moved_guarded[i].pos[0], moved_guarded[i].pos[2]), 0.5f, 1e-5f);
++        EXPECT_EQ(moved_guarded[i].pos[1], moved_plain[i].pos[1]);
++        EXPECT_EQ(moved_guarded[i].normal, moved_plain[i].normal);
++    }
++    // The baked cache keeps the push-out.
++    auto restored = gfx::bake::ReadBakedModel(gfx::bake::SerializeBakedModel(*guarded));
++    ASSERT_TRUE(restored.ok()) << restored.status();
++    const auto again = Draw(std::shared_ptr<gfx::bake::BakedModel>(std::move(*restored)), 0.3f);
++    ASSERT_EQ(again.size(), moved_guarded.size());
++    EXPECT_EQ(std::memcmp(again.data(), moved_guarded.data(), again.size() * sizeof(again[0])), 0);
++}
++
++TEST(AntiClipTest, RejectsMalformedPushOut) {
++    InitCpuInfo();
++    auto model = MakeClothBesideBody(true);
++    model.springs->push_capsules[1] = 2;  // no capsule 1
++    std::array<gfx::bake::Pixel, 4> pixels{};
++    gfx::bake::Texture texture(pixels.data(), 2, 2);
++    std::string protobuf;
++    struct_pb::to_pb(model, protobuf);
++    EXPECT_FALSE(gfx::bake::BakeModel(StrBuf(protobuf), texture, {.origin_ver = 29}).ok());
++    model = MakeClothBesideBody(true);
++    model.springs->push_share.pop_back();
++    protobuf.clear();
++    struct_pb::to_pb(model, protobuf);
++    EXPECT_FALSE(gfx::bake::BakeModel(StrBuf(protobuf), texture, {.origin_ver = 29}).ok());
++}
++
++// A horizontal hair (pivot 2 blocks up, rest tail 1 block along +X) falls
++// under gravity toward a pole capsule standing below its pivot.
++model_proto::GeoModel MakeHairOverPole(float allowance) {
++    model_proto::GeoModel model;
++    model.bones.resize(3);
++    model.bones[0].name = "root";
++    model.bones[0].pivot = {0, 0, 0};
++    model.bones[1].name = "hair";
++    model.bones[1].parent = "root";
++    model.bones[1].pivot = {0, 32, 0};
++    model.bones[2].name = "tip";
++    model.bones[2].parent = "hair";
++    model.bones[2].pivot = {16, 32, 0};
++    for (auto& bone : model.bones) {
++        bone.rotate = {0, 0, 0};
++    }
++    auto& springs = model.springs.emplace();
++    springs.chains.resize(1);
++    springs.joints.push_back(
++        model_proto::SpringJoint(1, {1, 2, 0}, 0.0f, 0.0f, 0.4f, 4.0f, {0, -1, 0}, 0));
++    springs.body.emplace_back(0, std::vector<float>{0, 0, 0}, std::vector<float>{0, 1, 0},
++                              0.2f, 0.2f);
++    if (allowance >= 0.0f) {
++        springs.joints[0].backstop = 1;
++        springs.joints[0].backstop_allowance = allowance;
++    }
++    return model;
++}
++
++float TailDistanceFromPoleTop(const model_proto::GeoModel& model) {
++    const auto baked = BakeOpaque(model);
++    EXPECT_NE(baked, nullptr);
++    std::vector<gfx::renderer::BoneAttribute> attributes(3);
++    for (auto& attribute : attributes) {
++        attribute.scale[0] = attribute.scale[1] = attribute.scale[2] = 1.0f;
++    }
++    gfx::renderer::ModelState state;
++    gfx::renderer::PhysicsFrame frame;
++    frame.delta_seconds = 1.0f / 60.0f;
++    for (int i = 0; i < 240; ++i) {
++        EXPECT_TRUE(state.Extract(kGenericTag, baked, attributes, attributes.size(), &frame).ok());
++    }
++    const auto& sorted = baked->Bones().sorted_bone_indices;
++    size_t tip = 0;
++    while (sorted[tip] != 2) {
++        ++tip;
++    }
++    const auto& pose = state.PoseView().bone_poses[tip].pose;
++    // The tip bone's pivot is the hair's tail.
++    const float x = pose[0][0] * 1.0f + pose[1][0] * 2.0f + pose[3][0];
++    const float y = pose[0][1] * 1.0f + pose[1][1] * 2.0f + pose[3][1];
++    return std::hypot(x, y - 1.0f);
++}
++
++TEST(AntiClipTest, BackstopKeepsTheTailNearItsAnimatedDistance) {
++    InitCpuInfo();
++    // Animated tail (1, 2) is sqrt(2) from the pole's top. Draws interpolate
++    // between the last two steps and the length constraint follows each push,
++    // so the drawn tail may sit a few millimetres inside the bound.
++    const float animated = std::sqrt(2.0f);
++    EXPECT_LT(TailDistanceFromPoleTop(MakeHairOverPole(-1.0f)), 0.5f);
++    EXPECT_GT(TailDistanceFromPoleTop(MakeHairOverPole(0.2f)), animated - 0.2f - 5e-3f);
++    EXPECT_GT(TailDistanceFromPoleTop(MakeHairOverPole(0.0f)), animated - 5e-3f);
++}
++
++// Pendulum B of the pair (no colliders), half a block off the vertical axis
++// through the origin: 60 frames at rest at 60 Hz, then `frames` frames each
++// turning the model `degrees` about that axis. Returns B's drawn tail.
++std::array<float, 3> TurnedTail(float turn_limit, float damping, float degrees, int frames) {
++    auto model = MakePendulumPair(false, false);
++    model.springs->chains[0].colliders.clear();
++    model.springs->inertia_turn_limit = turn_limit;
++    model.springs->inertia_damping = damping;
++    const auto baked = BakeOpaque(model);
++    EXPECT_NE(baked, nullptr);
++    std::vector<gfx::renderer::BoneAttribute> attributes(6);
++    for (auto& attribute : attributes) {
++        attribute.scale[0] = attribute.scale[1] = attribute.scale[2] = 1.0f;
++    }
++    gfx::renderer::ModelState state;
++    gfx::renderer::PhysicsFrame frame;
++    frame.delta_seconds = 1.0f / 60.0f;
++    for (int i = 0; i < 60; ++i) {
++        EXPECT_TRUE(state.Extract(kGenericTag, baked, attributes, attributes.size(), &frame).ok());
++    }
++    // World-fixed points turn the other way in model space.
++    const float angle = -degrees * 3.14159265f / 180.0f;
++    frame.motion[0][0] = frame.motion[2][2] = std::cos(angle);
++    frame.motion[0][2] = -std::sin(angle);
++    frame.motion[2][0] = std::sin(angle);
++    for (int i = 0; i < frames; ++i) {
++        EXPECT_TRUE(state.Extract(kGenericTag, baked, attributes, attributes.size(), &frame).ok());
++    }
++    const auto& sorted = baked->Bones().sorted_bone_indices;
++    size_t tip = 0;
++    while (sorted[tip] != 4) {
++        ++tip;
++    }
++    const auto& pose = state.PoseView().bone_poses[tip].pose;
++    std::array<float, 3> out{};
++    for (int row = 0; row < 3; ++row) {
++        out[row] = pose[0][row] * -0.5f + pose[1][row] * 1.0f + pose[3][row];
++    }
++    return out;
++}
++
++float TurnLag(const std::array<float, 3>& tail) {
++    return std::hypot(tail[0] + 0.5f, tail[1] - 1.0f, tail[2]);
++}
++
++TEST(AntiClipTest, InertiaLimitCarriesFastTurnsWithTheModel) {
++    InitCpuInfo();
++    constexpr float kLimit = 6.2831853f;  // 360 degrees per second
++    // Under the limit (120 deg/s) nothing changes.
++    const auto slow = TurnedTail(0.0f, 0.0f, 2.0f, 20);
++    const auto slow_limited = TurnedTail(kLimit, 0.0f, 2.0f, 20);
++    EXPECT_EQ(std::memcmp(slow.data(), slow_limited.data(), sizeof(slow)), 0);
++    EXPECT_GT(TurnLag(slow), 1e-3f);
++    // A snap turn (1200 deg/s for 0.1 s) leaves the free tail far behind; the
++    // limit carries the excess with the model, so B lags much less.
++    const auto free = TurnLag(TurnedTail(0.0f, 0.0f, 20.0f, 6));
++    const auto limited = TurnLag(TurnedTail(kLimit, 0.0f, 20.0f, 6));
++    EXPECT_GT(free, 0.1f);
++    EXPECT_LT(limited, 0.5f * free);
++    // Full damping carries every turn: the tail stays where it hangs.
++    EXPECT_LT(TurnLag(TurnedTail(0.0f, 1.0f, 20.0f, 6)), 1e-4f);
++    // The baked cache keeps the limits.
++    auto model = MakePendulumPair(false, false);
++    model.springs->inertia_turn_limit = kLimit;
++    model.springs->inertia_move_limit = 10.0f;
++    model.springs->inertia_damping = 0.25f;
++    auto restored = gfx::bake::ReadBakedModel(gfx::bake::SerializeBakedModel(*BakeOpaque(model)));
++    ASSERT_TRUE(restored.ok()) << restored.status();
++    EXPECT_EQ((*restored)->Springs().inertia_turn_limit, kLimit);
++    EXPECT_EQ((*restored)->Springs().inertia_move_limit, 10.0f);
++    EXPECT_EQ((*restored)->Springs().inertia_damping, 0.25f);
++}
++
++TEST(AntiClipTest, RejectsMalformedInertiaLimits) {
++    InitCpuInfo();
++    std::array<gfx::bake::Pixel, 4> pixels{};
++    gfx::bake::Texture texture(pixels.data(), 2, 2);
++    const auto bakes = [&](float turn, float move, float damping) {
++        auto model = MakePendulumPair(false, false);
++        model.springs->inertia_turn_limit = turn;
++        model.springs->inertia_move_limit = move;
++        model.springs->inertia_damping = damping;
++        std::string protobuf;
++        struct_pb::to_pb(model, protobuf);
++        return gfx::bake::BakeModel(StrBuf(protobuf), texture, {.origin_ver = 29}).ok();
++    };
++    EXPECT_TRUE(bakes(6.0f, 10.0f, 0.5f));
++    EXPECT_FALSE(bakes(-1.0f, 0.0f, 0.0f));
++    EXPECT_FALSE(bakes(0.0f, std::nanf(""), 0.0f));
++    EXPECT_FALSE(bakes(0.0f, 0.0f, 1.5f));
++    EXPECT_FALSE(bakes(INFINITY, 0.0f, 0.0f));
++}
++}  // namespace
++}  // namespace ysm::test

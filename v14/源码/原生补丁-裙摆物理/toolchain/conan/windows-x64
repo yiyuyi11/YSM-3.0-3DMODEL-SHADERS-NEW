@@ -1,0 +1,23 @@
+[settings]
+os=Windows
+arch=x86_64
+compiler=clang
+compiler.version=21
+compiler.runtime=static
+compiler.runtime_type=Release
+compiler.runtime_version=v144
+compiler.cppstd=23
+build_type=Release
+[buildenv]
+CC=/usr/bin/clang-cl-21
+CXX=/usr/bin/clang-cl-21
+[conf]
+tools.cmake.cmaketoolchain:system_name=Windows
+tools.cmake.cmaketoolchain:system_processor=AMD64
+tools.build:compiler_executables={"c": "/usr/bin/clang-cl-21", "cpp": "/usr/bin/clang-cl-21", "rc": "/usr/bin/llvm-rc-21"}
+tools.build:cflags=["--target=x86_64-pc-windows-msvc", "/imsvc/home/user/ysm/nativebuild/winsdk/crt/include", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/ucrt", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/um", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/shared", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/winrt"]
+tools.build:cxxflags=["--target=x86_64-pc-windows-msvc", "/DYSM_CLANG_CL_NO_UNIQUE_ADDRESS_BROKEN", "/imsvc/home/user/ysm/nativebuild/winsdk/crt/include", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/ucrt", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/um", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/shared", "/imsvc/home/user/ysm/nativebuild/winsdk/sdk/include/winrt"]
+tools.build:sharedlinkflags=["/libpath:/home/user/ysm/nativebuild/winsdk/crt/lib/x86_64", "/libpath:/home/user/ysm/nativebuild/winsdk/sdk/lib/um/x86_64", "/libpath:/home/user/ysm/nativebuild/winsdk/sdk/lib/ucrt/x86_64"]
+tools.build:exelinkflags=["/libpath:/home/user/ysm/nativebuild/winsdk/crt/lib/x86_64", "/libpath:/home/user/ysm/nativebuild/winsdk/sdk/lib/um/x86_64", "/libpath:/home/user/ysm/nativebuild/winsdk/sdk/lib/ucrt/x86_64"]
+tools.build:jobs=6
+tools.cmake.cmaketoolchain:extra_variables={"CMAKE_LINKER": "/usr/bin/lld-link-21", "CMAKE_AR": "/usr/bin/llvm-lib-21", "CMAKE_MT": "/usr/bin/llvm-mt-21", "CMAKE_RC_COMPILER": "/usr/bin/llvm-rc-21", "CMAKE_ASM_NASM_COMPILER": "/usr/bin/nasm", "CMAKE_TRY_COMPILE_CONFIGURATION": "Release"}

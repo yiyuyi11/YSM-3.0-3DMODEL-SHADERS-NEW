@@ -1,0 +1,40 @@
+model pelica.vrm: 77962 vertices, 110229 triangles, extent 2.2034, build 1513 ms
+  LOD1: 62621 triangles (56.8%), 47401 vertices, 0 outline, error 0.099% of extent
+  LOD2: 18472 triangles (16.8%), 15947 vertices, 0 outline, error 0.499% of extent
+  LOD3: 6460 triangles (5.9%), 5961 vertices, 0 outline, error 1.991% of extent
+  spring chains: 14 primary, 7 secondary, 4 accessory
+  mesh_lod entry: 289998 bytes (main mesh 5058743 bytes)
+LOD0 110229 tris:
+LOD1  62621 tris:  front   139 px differ (max 3.0 px from LOD0's edge)  side   101 px differ (max 2.8 px from LOD0's edge)  head   249 px differ (max 6.0 px from LOD0's edge)
+LOD2  18472 tris:  front  1147 px differ (max 9.1 px from LOD0's edge)  side   880 px differ (max 25.0 px from LOD0's edge)  head  1601 px differ (max 19.3 px from LOD0's edge)
+LOD3   6460 tris:  front  3271 px differ (max 15.6 px from LOD0's edge)  side  2971 px differ (max 9.9 px from LOD0's edge)  head  3695 px differ (max 49.3 px from LOD0's edge)
+model vrm1.vrm: 44791 vertices, 71676 triangles, extent 2.2237, build 1673 ms
+  LOD1: 34955 triangles (48.8%), 22557 vertices, 0 outline, error 0.100% of extent
+  LOD2: 8580 triangles (12.0%), 6301 vertices, 0 outline, error 0.498% of extent
+  LOD3: 3302 triangles (4.6%), 2720 vertices, 0 outline, error 1.991% of extent
+  spring chains: 7 primary, 4 secondary, 11 accessory
+  mesh_lod entry: 152951 bytes (main mesh 3202972 bytes)
+LOD0  71676 tris:
+LOD1  34955 tris:  front   107 px differ (max 1.4 px from LOD0's edge)  side   101 px differ (max 3.2 px from LOD0's edge)  head   170 px differ (max 1.4 px from LOD0's edge)
+LOD2   8580 tris:  front  1006 px differ (max 4.2 px from LOD0's edge)  side   628 px differ (max 23.4 px from LOD0's edge)  head  1700 px differ (max 12.7 px from LOD0's edge)
+LOD3   3302 tris:  front  2341 px differ (max 7.1 px from LOD0's edge)  side  2789 px differ (max 26.9 px from LOD0's edge)  head  5178 px differ (max 16.3 px from LOD0's edge)
+model 薇薇安皮肤.pmx: 46097 vertices, 62958 triangles, extent 2.2186, build 1489 ms
+  LOD1: 42692 triangles (67.8%), 33218 vertices, 0 outline, error 0.098% of extent
+  LOD2: 12812 triangles (20.4%), 12479 vertices, 0 outline, error 0.498% of extent
+  LOD3: 4217 triangles (6.7%), 4888 vertices, 0 outline, error 1.989% of extent
+  spring chains: 5 primary, 6 secondary, 2 accessory
+  mesh_lod entry: 277852 bytes (main mesh 3351842 bytes)
+LOD0  62958 tris:
+LOD1  42692 tris:  front    91 px differ (max 1.4 px from LOD0's edge)  side    95 px differ (max 9.9 px from LOD0's edge)  head    40 px differ (max 1.4 px from LOD0's edge)
+LOD2  12812 tris:  front   975 px differ (max 35.5 px from LOD0's edge)  side  1152 px differ (max 11.2 px from LOD0's edge)  head  1171 px differ (max 5.7 px from LOD0's edge)
+LOD3   4217 tris:  front  4049 px differ (max 35.5 px from LOD0's edge)  side  3696 px differ (max 41.0 px from LOD0's edge)  head  5232 px differ (max 35.3 px from LOD0's edge)
+model 柚叶泳装.pmx: 59449 vertices, 87255 triangles, extent 2.0799, build 1056 ms
+  LOD1: 69178 triangles (79.3%), 48783 vertices, 0 outline, error 0.098% of extent
+  LOD2: 44361 triangles (50.8%), 32792 vertices, 0 outline, error 0.498% of extent
+  LOD3: 16115 triangles (18.5%), 11505 vertices, 0 outline, error 1.991% of extent
+  spring chains: 1 primary, 2 secondary, 5 accessory
+  mesh_lod entry: 515265 bytes (main mesh 4172504 bytes)
+LOD0  87255 tris:
+LOD1  69178 tris:  front   172 px differ (max 2.8 px from LOD0's edge)  side   108 px differ (max 2.2 px from LOD0's edge)  head   118 px differ (max 2.8 px from LOD0's edge)
+LOD2  44361 tris:  front  1149 px differ (max 7.1 px from LOD0's edge)  side  1032 px differ (max 10.0 px from LOD0's edge)  head  1299 px differ (max 5.7 px from LOD0's edge)
+LOD3  16115 tris:  front  5380 px differ (max 15.6 px from LOD0's edge)  side  3690 px differ (max 26.9 px from LOD0's edge)  head  3788 px differ (max 32.5 px from LOD0's edge)

@@ -1,0 +1,13 @@
+{
+	"format_version": "1.8.0",
+	"animations": {
+		"parallel2": {
+			"loop": true,
+			"bones": {
+				"RightHand": {
+					"rotation": ["ctrl.tac_hold_gun ? 5 : 0", 0, "math.cos(query.anim_time * 90) * 3"]
+				}
+			}
+		}
+	}
+}
