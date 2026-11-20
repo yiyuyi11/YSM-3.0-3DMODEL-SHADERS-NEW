@@ -1,0 +1,4 @@
+Manifest-Version: 1.0
+MixinConfigs: endfield_npr.mixins.json
+Implementation-Title: endfield_npr
+Implementation-Version: 0.2.1

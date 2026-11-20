@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/llvm-ml-21 -m64 "$@"

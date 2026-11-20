@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="Local research use only"
+
+[[mods]]
+modId="ysm_fitbox"
+version="0.2.2"
+displayName="YSM FitBox"
+description='''Fits each player's collision box (per pose) to their YesSteveModel model and hits them on bone-attached capsules fitted to the model's surface.'''
+
+[[dependencies.ysm_fitbox]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.ysm_fitbox]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1]"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.ysm_fitbox]]
+    modId="ysm"
+    mandatory=true
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"

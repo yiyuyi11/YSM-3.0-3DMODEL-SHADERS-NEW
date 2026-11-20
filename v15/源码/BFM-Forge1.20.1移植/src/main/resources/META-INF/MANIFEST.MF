@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Implementation-Title: battlefield_movement
+Implementation-Version: 1.7.23
+MixinConfigs: battlefield_movement.mixins.json
+

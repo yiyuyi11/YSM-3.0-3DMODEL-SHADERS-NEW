@@ -1,0 +1,16 @@
+run/server.log:[09:28:05] [ysm_fitbox fitter/INFO] [YSM FitBox/]: Fitted YSM model 0488d5975f6623ce1db6f4ea1cb6ba9d41c7d25f1490044511eb983d8ae79b24:
+run/server.log:[09:28:11] [Server thread/INFO] [minecraft/MinecraftServer]: Mannequin wearing pelica at 0.50 -60.00 3.00: box 0.48 x 1.98
+run/server.log:[09:28:41] [Server thread/INFO] [YSM FitBox/]: [hit] melee Tester -> FitBoxDummy: server shapes (+0.6) hit CHEST
+run/server.log:[09:28:58] [Server thread/INFO] [YSM FitBox/]: [hit] arrow -> FitBoxDummy: fitted box hit, shapes miss
+run/server.log:[09:28:58] [Server thread/INFO] [YSM FitBox/]: [hit] arrow -> FitBoxDummy: fitted box hit, shapes hit RIGHT_SHIN
+run/server.log:[09:29:01] [Server thread/INFO] [YSM FitBox/]: [hit] arrow -> FitBoxDummy: fitted box hit, shapes miss
+run/server.log:[09:29:01] [Server thread/INFO] [YSM FitBox/]: [hit] arrow -> FitBoxDummy: fitted box hit, shapes miss
+run/server.log:[09:29:04] [Server thread/INFO] [YSM FitBox/]: [hit] arrow -> FitBoxDummy: fitted box hit, shapes miss
+run/server.log:[09:29:04] [Server thread/INFO] [YSM FitBox/]: [hit] arrow -> FitBoxDummy: fitted box hit, shapes hit CHEST
+run/server.log:[09:29:29] [ysm_fitbox fitter/INFO] [YSM FitBox/]: Fitted YSM model bd79bdcddf3efdf7bf86cac84a0a65b20a16fefc72ac88920eab41232a4949e7:
+info	2026-11-17T09:28:11.571+00:00	net.minecraft.client.gui.components.ChatComponent	Render thread	[System] [CHAT] [Server: Mannequin wearing pelica at 0.50 -60.00 3.00: box 0.48 x 1.98]
+info	2026-11-17T09:28:11.580+00:00	YSM FitBox	Render thread	[pick] FitBoxDummy: fitted box hit, shapes hit HEAD
+info	2026-11-17T09:28:25.033+00:00	YSM FitBox	Render thread	[pick] FitBoxDummy: fitted box hit, shapes hit CHEST
+info	2026-11-17T09:28:32.328+00:00	YSM FitBox	Render thread	[pick] FitBoxDummy: fitted box hit, shapes miss -> no target
+info	2026-11-17T09:28:36.834+00:00	YSM FitBox	Render thread	[pick] FitBoxDummy: fitted box hit, shapes hit LEFT_SHIN
+info	2026-11-17T09:28:56.040+00:00	YSM FitBox	Render thread	[pick] FitBoxDummy: fitted box miss, shapes miss
