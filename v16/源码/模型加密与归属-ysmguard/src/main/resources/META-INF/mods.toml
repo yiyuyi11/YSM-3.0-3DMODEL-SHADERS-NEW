@@ -1,0 +1,28 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="Local use"
+
+[[mods]]
+modId="ysmguard"
+version="1.0.0"
+displayName="YSM Guard"
+description='''YesSteveModel model protection: encrypted YSM channel and client model cache, admin/uploader model ownership.'''
+
+[[dependencies.ysmguard]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.ysmguard]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1]"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.ysmguard]]
+    modId="ysm"
+    mandatory=true
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"

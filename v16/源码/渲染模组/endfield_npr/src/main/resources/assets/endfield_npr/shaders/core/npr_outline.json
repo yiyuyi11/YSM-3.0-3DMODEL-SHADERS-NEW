@@ -1,0 +1,707 @@
+{
+ "blend": {
+  "func": "add",
+  "srcrgb": "srcalpha",
+  "dstrgb": "1-srcalpha"
+ },
+ "vertex": "endfield_npr:npr_outline",
+ "fragment": "endfield_npr:npr_character",
+ "attributes": [
+  "Position",
+  "Color",
+  "UV0",
+  "UV1",
+  "UV2",
+  "Normal"
+ ],
+ "samplers": [
+  {
+   "name": "Sampler0"
+  },
+  {
+   "name": "Sampler2"
+  },
+  {
+   "name": "Sampler3"
+  },
+  {
+   "name": "Sampler4"
+  },
+  {
+   "name": "Sampler5"
+  },
+  {
+   "name": "Sampler6"
+  },
+  {
+   "name": "Sampler7"
+  },
+  {
+   "name": "Sampler8"
+  },
+  {
+   "name": "Sampler9"
+  },
+  {
+   "name": "Sampler10"
+  },
+  {
+   "name": "SelfShadowMap"
+  },
+  {
+   "name": "SceneDepth"
+  },
+  {
+   "name": "Sampler11"
+  },
+  {
+   "name": "Sampler12"
+  }
+ ],
+ "uniforms": [
+  {
+   "name": "ModelViewMat",
+   "type": "matrix4x4",
+   "count": 16,
+   "values": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "ProjMat",
+   "type": "matrix4x4",
+   "count": 16,
+   "values": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "ColorModulator",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "LightDirView",
+   "type": "float",
+   "count": 3,
+   "values": [
+    0.0,
+    1.0,
+    0.0
+   ]
+  },
+  {
+   "name": "LightColor",
+   "type": "float",
+   "count": 3,
+   "values": [
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "MatSkin",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.258,
+    0.454,
+    0.55,
+    1.4
+   ]
+  },
+  {
+   "name": "MatFace",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    0.0,
+    0.55,
+    1.4
+   ]
+  },
+  {
+   "name": "MatHair",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.7,
+    0.0,
+    0.6,
+    1.0
+   ]
+  },
+  {
+   "name": "MatCloth",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.327,
+    1.0,
+    0.5,
+    1.0
+   ]
+  },
+  {
+   "name": "MatEye",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    0.0,
+    0.55,
+    1.4
+   ]
+  },
+  {
+   "name": "HairAniso",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.5,
+    3.0,
+    1.0,
+    0.0
+   ]
+  },
+  {
+   "name": "SkinRim",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.651,
+    0.396,
+    0.416,
+    0.7
+   ]
+  },
+  {
+   "name": "Globals0",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "Globals1",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    1.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "Globals2",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    1.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "RimColor",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    1.0,
+    1.0,
+    0.35
+   ]
+  },
+  {
+   "name": "RimParams",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    0.3,
+    0.5,
+    0.5
+   ]
+  },
+  {
+   "name": "SkyColor",
+   "type": "float",
+   "count": 3,
+   "values": [
+    0.47,
+    0.65,
+    1.0
+   ]
+  },
+  {
+   "name": "HasClassMap",
+   "type": "float",
+   "count": 1,
+   "values": [
+    0.0
+   ]
+  },
+  {
+   "name": "WorldUp",
+   "type": "float",
+   "count": 3,
+   "values": [
+    0.0,
+    1.0,
+    0.0
+   ]
+  },
+  {
+   "name": "HairSpec",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.5,
+    1.0,
+    -0.02,
+    0.5
+   ]
+  },
+  {
+   "name": "HairSpec2",
+   "type": "float",
+   "count": 3,
+   "values": [
+    0.226,
+    0.223,
+    0.114
+   ]
+  },
+  {
+   "name": "OutlineBS0",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.5,
+    1.5,
+    0.35,
+    1.5
+   ]
+  },
+  {
+   "name": "OutlineBS1",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.8,
+    1.0,
+    0.5,
+    1.5
+   ]
+  },
+  {
+   "name": "OutlinePass",
+   "type": "float",
+   "count": 1,
+   "values": [
+    1.0
+   ]
+  },
+  {
+   "name": "Minimal",
+   "type": "float",
+   "count": 1,
+   "values": [0.0]
+  },
+  {
+   "name": "ScreenSize",
+   "type": "float",
+   "count": 2,
+   "values": [
+    1280.0,
+    720.0
+   ]
+  },
+  {
+   "name": "OutlineWidth",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.6,
+    0.5,
+    0.5,
+    0.65
+   ]
+  },
+  {
+   "name": "OutlineOffsetZ",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    0.75,
+    0.01,
+    0.02
+   ]
+  },
+  {
+   "name": "OutlineScale",
+   "type": "float",
+   "count": 1,
+   "values": [
+    1.0
+   ]
+  },
+  {
+   "name": "FaceFlags",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "FaceRect",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    0.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "IrisRect",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    0.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "HighlightVec",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    0.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "MatcapColor",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "DisplayParams",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    1.0,
+    0.93,
+    1.0
+   ]
+  },
+  {
+   "name": "Tuning",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "SceneShadow",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    1.0,
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "name": "ShadowDistort",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.8,
+    1.0408,
+    0.937,
+    6.0
+   ]
+  },
+  {
+   "name": "ShadowMV",
+   "type": "matrix4x4",
+   "count": 16,
+   "values": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "ShadowProj",
+   "type": "matrix4x4",
+   "count": 16,
+   "values": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "ViewToPlayer",
+   "type": "matrix3x3",
+   "count": 9,
+   "values": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "SceneShadow2",
+   "type": "float",
+   "count": 4,
+   "values": [
+    1.0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "SelfShadowMat",
+   "type": "matrix4x4",
+   "count": 16,
+   "values": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0
+   ]
+  },
+  {
+   "name": "SelfShadowParams",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    0,
+    0,
+    1.0
+   ]
+  },
+  {
+   "name": "AoParams",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    1.0,
+    0,
+    0
+   ]
+  },
+  {
+   "name": "InvProjMat",
+   "type": "matrix4x4",
+   "count": 16,
+   "values": [
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0,
+    0,
+    0,
+    0,
+    0,
+    1.0
+   ]
+  },
+  {
+   "name": "DebugView",
+   "type": "float",
+   "count": 1,
+   "values": [
+    0.0
+   ]
+  },
+  {
+   "name": "TranslucentCover",
+   "type": "float",
+   "count": 4,
+   "values": [
+    0.0,
+    1.0,
+    0.0,
+    0.0
+   ]
+  },
+  {
+   "name": "FaceCrackDebug",
+   "type": "float",
+   "count": 1,
+   "values": [
+    0.0
+   ]
+  },
+  {"name": "NprTweak", "type": "float", "count": 4, "values": [0.5, 1.0, 1.0, 1.0]},
+  {
+   "name": "NprMapLayers0",
+   "type": "float",
+   "count": 4,
+   "values": [-1.0, -1.0, -1.0, -1.0]
+  },
+  {
+   "name": "NprMapLayers1",
+   "type": "float",
+   "count": 4,
+   "values": [-1.0, -1.0, -1.0, -1.0]
+  },
+  {
+   "name": "MapTuning",
+   "type": "float",
+   "count": 4,
+   "values": [1.0, 1.0, 1.0, 1.0]
+  },
+  {
+   "name": "IrisParams",
+   "type": "float",
+   "count": 4,
+   "values": [0.0, 0.0, 1.0, 0.0]
+  },
+  {
+   "name": "IrisHighlight",
+   "type": "float",
+   "count": 3,
+   "values": [1.0, 1.0, 1.0]
+  },
+  {
+   "name": "IrisScatter",
+   "type": "float",
+   "count": 3,
+   "values": [1.0, 1.0, 1.0]
+  },
+  {
+   "name": "BrowReveal",
+   "type": "float",
+   "count": 4,
+   "values": [0.0, 0.5, 0.0, 0.0]
+  },
+  {"name": "MaterialClasses", "type": "float", "count": 1, "values": [0.0]}
+ ]
+}

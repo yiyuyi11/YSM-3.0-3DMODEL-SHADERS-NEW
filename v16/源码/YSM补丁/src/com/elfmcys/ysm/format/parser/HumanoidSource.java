@@ -1,0 +1,288 @@
+package com.elfmcys.ysm.format.parser;
+
+import com.elfmcys.ysm.util.Closeable;
+import it.unimi.dsi.fastutil.floats.FloatArrayList;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+
+/**
+ * Format-neutral humanoid read from VRM, PMX or PMD: a node tree with rest positions and a triangle mesh already
+ * skinned into the rest pose. Space is right-handed, Y up, meters; facing is resolved later.
+ */
+final class HumanoidSource implements Closeable {
+    static final int OPAQUE = 0;
+    static final int MASK = 1;
+    /** Partial alpha; imports dither it to cutout coverage (see {@link TextureAtlas}). */
+    static final int BLEND = 2;
+
+    /** Joint value for vertices attached to the synthetic YSM root. */
+    static final int ROOT_JOINT = -1;
+
+    /** @param outline the toon outline drawn around this material's surfaces, or null for none */
+    record Material(String name, @Nullable HumanoidTexture texture, float r, float g, float b, float a, int alphaMode,
+        float cutoff, @Nullable Outline outline) {
+    }
+
+    /**
+     * Inverted-hull outline: the surface pushed out along its normal by width meters and drawn from the inside in a
+     * solid color, so only a rim shows around the silhouette and creases.
+     */
+    record Outline(float r, float g, float b, float width) {
+
+        /** Thinner outlines vanish at the distances a player model is seen from; thicker ones look like a shell. */
+        static final float MIN_WIDTH = 0.002f;
+        static final float MAX_WIDTH = 0.012f;
+
+        static Outline of(float r, float g, float b, float width) {
+            return new Outline(clamp01(r), clamp01(g), clamp01(b), Math.min(Math.max(width, MIN_WIDTH), MAX_WIDTH));
+        }
+
+        private static float clamp01(float value) {
+            return Float.isFinite(value) ? Math.min(Math.max(value, 0f), 1f) : 0f;
+        }
+    }
+
+    record Metadata(String name, List<String> authors, String license) {
+    }
+
+    /**
+     * A simulated bone: it swings about its rest position so that it points at a tail that follows inertia, gravity and
+     * stiffness. tail and the gravity direction are in rest space; gravity (0, -1, 0) is world down.
+     *
+     * @param limit the range the bone's direction may take, or null for none
+     */
+    record SpringJoint(int node, Vector3f tail, float hitRadius, float stiffness, float drag, float gravityPower,
+        Vector3f gravity, int chain, @Nullable SpringLimit limit) {
+        SpringJoint(int node, Vector3f tail, float hitRadius, float stiffness, float drag, float gravityPower,
+            Vector3f gravity, int chain) {
+            this(node, tail, hitRadius, stiffness, drag, gravityPower, gravity, chain, null);
+        }
+
+        SpringJoint withHitRadius(float radius) {
+            return new SpringJoint(node, tail, radius, stiffness, drag, gravityPower, gravity, chain, limit);
+        }
+    }
+
+    /**
+     * VRMC_springBone_limit angle limit. frame is the limit space in rest space: its +Y is the cone / hinge axis, the
+     * hinge turns about +X, spherical pitch turns about +X and yaw toward +X. angle is the cone or hinge angle or the
+     * spherical pitch, yaw the spherical yaw, in radians.
+     */
+    record SpringLimit(int type, Quaternionf frame, float angle, float yaw) {
+        static final int CONE = 1;
+        static final int HINGE = 2;
+        static final int SPHERICAL = 3;
+    }
+
+    /**
+     * Capsule from head to tail in rest space carried by a node; a sphere when both coincide. {@link #OUTSIDE} keeps
+     * tails out of it, {@link #INSIDE} keeps them in it; a {@link #PLANE} passes through head with its normal toward
+     * tail and keeps tails on the normal's side (radius unused).
+     */
+    record SpringCollider(int node, Vector3f head, Vector3f tail, float radius, int type) {
+        static final int OUTSIDE = 0;
+        static final int INSIDE = 1;
+        static final int PLANE = 2;
+
+        SpringCollider(int node, Vector3f head, Vector3f tail, float radius) {
+            this(node, head, tail, radius, OUTSIDE);
+        }
+    }
+
+    /**
+     * The {@link #springColliders} indices a chain's joints collide with, and the node whose space carries the chain's
+     * inertia (VRM spring center; -1 for world space).
+     */
+    record SpringChain(int[] colliders, int center) {
+    }
+
+    /**
+     * A facial expression or other shape key: rest-space vertex offsets at full weight, summed when several sources
+     * move the same vertex. Names follow VRM 1.0 presets where the source has an equivalent (blink, aa, happy, ...).
+     */
+    static final class Expression {
+        final String name;
+        final IntArrayList vertices = new IntArrayList();
+        final FloatArrayList deltas = new FloatArrayList();
+        private final Int2IntOpenHashMap slots = new Int2IntOpenHashMap();
+
+        Expression(String name) {
+            this.name = name;
+            slots.defaultReturnValue(-1);
+        }
+
+        void add(int vertex, float x, float y, float z) {
+            if (x == 0f && y == 0f && z == 0f) {
+                return;
+            }
+            var slot = slots.get(vertex);
+            if (slot < 0) {
+                slots.put(vertex, vertices.size());
+                vertices.add(vertex);
+                deltas.add(x);
+                deltas.add(y);
+                deltas.add(z);
+            } else {
+                deltas.set(slot * 3, deltas.getFloat(slot * 3) + x);
+                deltas.set(slot * 3 + 1, deltas.getFloat(slot * 3 + 1) + y);
+                deltas.set(slot * 3 + 2, deltas.getFloat(slot * 3 + 2) + z);
+            }
+        }
+    }
+
+    /** Default rendered height in blocks, feet to the top of the mesh: two blocks, like a tall player model. */
+    static final float DEFAULT_HEIGHT = 2f;
+    /** Rendered height in blocks; humanoid.json may set it. */
+    float height = DEFAULT_HEIGHT;
+    /**
+     * Default scale of held items. Items keep the default model's size, sized for its blocky limbs; at two blocks tall
+     * a humanoid's limbs are far slimmer, and full-size items look oversized in its hands.
+     */
+    static final float DEFAULT_ITEM_SCALE = 0.7f;
+    /** Scale of held items; humanoid.json may set it. */
+    float itemScale = DEFAULT_ITEM_SCALE;
+    /**
+     * Whether the model's own toon outlines (PMX edges, MToon outlines) become inverted hulls; humanoid.json may turn
+     * them on. Off by default: the stylized-PBR shading separates the figure with rim light instead.
+     */
+    boolean outline;
+    /**
+     * Whether skirt-like spring chains get leg colliders fitted to the mesh ({@link ClothColliders}). Off by default:
+     * the author's own colliders come first; humanoid.json's "cloth_colliders": true turns it on.
+     */
+    boolean clothColliders;
+    /**
+     * Whether the upper part of those skirts follows the thighs in part through its skin weights. Off by default;
+     * humanoid.json's "cloth_follow": true turns it on.
+     */
+    boolean clothFollow;
+    /**
+     * Anti-clip layers ({@link AntiClip}), each on by default: hair chains collide with the fitted body proxy
+     * (humanoid.json "anti_clip_colliders"), joints keep a backstop against it ("anti_clip_backstop") and soft
+     * vertices are pushed out of it after skinning ("anti_clip_push"); hems (skirts, dress hems) get rest-clear
+     * colliders and the proxy's legs ("anti_clip_hem_colliders"), links between neighbouring chains
+     * ("anti_clip_hem_links", with points along them kept out of the legs: "anti_clip_hem_link_collision"), leg sync
+     * ("anti_clip_hem_sync") and a smooth push ("anti_clip_push_smooth"); "anti_clip": false turns all of them off.
+     */
+    boolean antiClip = true;
+    boolean antiClipColliders = true;
+    boolean antiClipBackstop = true;
+    boolean antiClipPush = true;
+    boolean antiClipHemColliders = true;
+    boolean antiClipHemLinks = true;
+    boolean antiClipHemLinkCollision = true;
+    boolean antiClipHemSync = true;
+    boolean antiClipPushSmooth = true;
+    /**
+     * Inertia limits ({@link AntiClip}), on by default ("anti_clip_inertia"): spring tails stay behind in the world
+     * for at most "anti_clip_inertia_turn_limit" degrees of turn and "anti_clip_inertia_move_limit" model units of
+     * travel per second (0: no limit), faster motion carries them with the model; "anti_clip_world_inertia" (0..1) is
+     * the share of the motion within the limits they feel.
+     */
+    boolean antiClipInertia = true;
+    float antiClipInertiaTurnLimit = AntiClip.INERTIA_TURN_LIMIT;
+    float antiClipInertiaMoveLimit = AntiClip.INERTIA_MOVE_LIMIT;
+    float antiClipWorldInertia = 1f;
+    /**
+     * Bones of the spring chains that make the model's hem (humanoid.json "anti_clip_hem_chains", any joint's bone of
+     * each chain), for cloth the hem rule does not find; empty: found by rule.
+     */
+    java.util.Set<String> antiClipHemChains = java.util.Set.of();
+    /**
+     * Spring response ({@link SpringTune}): extra damping of hair and cloth chains (humanoid.json
+     * "spring_damping_hair" / "spring_damping_cloth", 0..1), stiffness multipliers ("spring_stiffness_hair" /
+     * "spring_stiffness_cloth") and the time constant of the body velocity the drag follows
+     * ("spring_body_velocity_seconds", 0: the native 0.1 s).
+     */
+    float springDampingHair = SpringTune.DAMPING_HAIR;
+    float springDampingCloth = SpringTune.DAMPING_CLOTH;
+    float springStiffnessHair = 1f;
+    float springStiffnessCloth = 1f;
+    float springBodyVelocitySeconds = SpringTune.BODY_VELOCITY_SECONDS;
+
+    final List<String> nodeNames = new ArrayList<>();
+    final IntArrayList parents = new IntArrayList();
+    /** Parent in the YSM skeleton; differs from the source parent where a constraint drives the node. */
+    final IntArrayList skeletonParents = new IntArrayList();
+    final FloatArrayList nodePositions = new FloatArrayList();
+
+    /**
+     * VRM humanoid bone names to nodes. Required: hips, spine, head and the upper/lower arm, hand, upper/lower leg and
+     * foot of both sides. Optional: neck, chest, shoulders, and lowerBody (a pelvis bone between hips and legs).
+     */
+    final Map<String, Integer> humanoid = new HashMap<>();
+
+    final FloatArrayList positions = new FloatArrayList();
+    final FloatArrayList normals = new FloatArrayList();
+    final FloatArrayList uvs = new FloatArrayList();
+    /** Four node indices per vertex; {@link #ROOT_JOINT} where weight is zero or the vertex is unparented. */
+    final IntArrayList joints = new IntArrayList();
+    final FloatArrayList weights = new FloatArrayList();
+    final IntArrayList triangles = new IntArrayList();
+    final IntArrayList triangleMaterials = new IntArrayList();
+    final List<Material> materials = new ArrayList<>();
+    /** glTF material index of every material (VRM only, -1 elsewhere), for the rig export. */
+    final IntArrayList materialGltf = new IntArrayList();
+    /** glTF image index of every material's base colour texture (VRM only, -1 for none), for the rig export. */
+    final IntArrayList materialImage = new IntArrayList();
+    /** Per-vertex outline width factor (PMX edge scale); empty means 1 for every vertex. */
+    final FloatArrayList edgeScales = new FloatArrayList();
+    Metadata metadata = new Metadata("", List.of(), "");
+
+    /** At most one joint per node. */
+    final List<SpringJoint> springJoints = new ArrayList<>();
+    final List<SpringCollider> springColliders = new ArrayList<>();
+    /** Per chain, the colliders its joints collide with and its center. */
+    final List<SpringChain> springChains = new ArrayList<>();
+
+    /** Unique names; empty expressions are dropped on import. */
+    final List<Expression> expressions = new ArrayList<>();
+
+    /** The expression of that name, created on first use. */
+    Expression expression(String name) {
+        for (var expression : expressions) {
+            if (expression.name.equals(name)) {
+                return expression;
+            }
+        }
+        var created = new Expression(name);
+        expressions.add(created);
+        return created;
+    }
+
+    int addNode(String name, int parent, float x, float y, float z) {
+        nodeNames.add(name);
+        parents.add(parent);
+        skeletonParents.add(parent);
+        nodePositions.add(x);
+        nodePositions.add(y);
+        nodePositions.add(z);
+        return nodeNames.size() - 1;
+    }
+
+    int nodeCount() {
+        return nodeNames.size();
+    }
+
+    int vertexCount() {
+        return positions.size() / 3;
+    }
+
+    @Override
+    public void close() {
+        var closed = new IdentityHashMap<HumanoidTexture, Boolean>();
+        for (var material : materials) {
+            if (material.texture() != null && closed.put(material.texture(), Boolean.TRUE) == null) {
+                material.texture().close();
+            }
+        }
+    }
+}

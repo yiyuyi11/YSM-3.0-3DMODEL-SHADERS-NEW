@@ -1,0 +1,10 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.ysmguard.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": ["ConnectionMixin", "PlayerListMixin", "PlayerUploadsMixin", "CatalogRecordMixin",
+    "ForgeTransportPortAccessor", "ServerAssetTransfersMixin"],
+  "client": ["DirectoryAccessMixin", "GrantDeltaFixMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

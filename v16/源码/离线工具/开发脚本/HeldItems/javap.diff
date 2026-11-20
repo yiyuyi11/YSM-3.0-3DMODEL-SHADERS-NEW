@@ -1,0 +1,8 @@
+85,87c85,87
+<      162: aload         8
+<      164: getstatic     #94                 // Field net/minecraft/world/item/ItemDisplayContext.THIRD_PERSON_RIGHT_HAND:Lnet/minecraft/world/item/ItemDisplayContext;
+<      167: getstatic     #100                // Field net/minecraft/world/entity/HumanoidArm.RIGHT:Lnet/minecraft/world/entity/HumanoidArm;
+---
+>      162: aload         9
+>      164: getstatic     #231                // Field net/minecraft/world/item/ItemDisplayContext.THIRD_PERSON_LEFT_HAND:Lnet/minecraft/world/item/ItemDisplayContext;
+>      167: getstatic     #147                // Field net/minecraft/world/entity/HumanoidArm.LEFT:Lnet/minecraft/world/entity/HumanoidArm;
